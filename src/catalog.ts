@@ -1,66 +1,11 @@
 import type { ManifestCatalog, MetaPreview, WithCache } from "@stremio-addon/sdk";
-import { inArray } from "drizzle-orm";
+import { and, inArray, isNotNull, sql } from "drizzle-orm";
 import { type Env, Hono } from "hono";
-import { z } from "zod";
 import { doubanMapping, getDrizzle } from "./db";
-import { doubanSubjectCollectionCache, doubanSubjectDetailCache } from "./libs/caches";
-import { tmdbHttp } from "./libs/http";
+import { doubanDetailDescCache, doubanSubjectCollectionCache } from "./libs/caches";
 import { matchResourceRoute } from "./libs/router";
-import {
-  type DoubanSubjectCollectionItem,
-  type tmdbSearchResultItemSchema,
-  tmdbSearchResultSchema,
-} from "./libs/schema";
 
 export const catalogRouter = new Hono<Env>();
-
-/** 从候选结果中精确匹配 TMDB ID */
-async function matchTmdbFromCandidates(
-  candidates: z.output<typeof tmdbSearchResultItemSchema>[],
-  item: DoubanSubjectCollectionItem,
-  originalTitle: string | undefined | null,
-): Promise<number | null> {
-  const byName = candidates.filter((v) => v.finalName === item.title);
-  if (byName.length === 1) return byName[0].id;
-
-  const toMatch = byName.length > 1 ? byName : candidates;
-
-  if (originalTitle) {
-    const byOriginal = toMatch.filter((v) => v.finalOriginalName === originalTitle);
-    if (byOriginal.length === 1) return byOriginal[0].id;
-    if (byOriginal.length > 1) {
-      console.warn("无法精准匹配 TMDB ID (多个原始标题匹配):", byOriginal, item);
-    }
-  }
-
-  return null;
-}
-
-/** 从 TMDB 搜索单个条目的 ID */
-async function searchTmdbId(item: DoubanSubjectCollectionItem): Promise<number | null> {
-  let originalTitle = item.original_title;
-  if (!originalTitle) {
-    const detail = await doubanSubjectDetailCache.fetch(item.id.toString());
-    originalTitle = detail?.original_title;
-  }
-  const resp = await tmdbHttp.get(`/search/${item.type}`, {
-    params: {
-      query: originalTitle || item.title,
-      language: "zh-CN",
-      year: item.year,
-    },
-  });
-  const { success, data, error } = tmdbSearchResultSchema.safeParse(resp.data);
-  if (!success) {
-    console.warn(z.prettifyError(error));
-    return null;
-  }
-
-  if (data.results.length === 0) return null;
-  if (data.results.length === 1) return data.results[0].id;
-
-  return matchTmdbFromCandidates(data.results, item, originalTitle);
-}
 
 catalogRouter.get("*", async (c) => {
   const [matched, params] = matchResourceRoute(c.req.path);
@@ -83,37 +28,55 @@ catalogRouter.get("*", async (c) => {
   // 2. 批量查询数据库中已有的映射
   const doubanIds = items.map((item) => item.id);
   const existingMappings = await db
-    .select({ doubanId: doubanMapping.doubanId, tmdbId: doubanMapping.tmdbId })
+    .select({ doubanId: doubanMapping.doubanId, imdbId: doubanMapping.imdbId })
     .from(doubanMapping)
-    .where(inArray(doubanMapping.doubanId, doubanIds));
+    .where(and(inArray(doubanMapping.doubanId, doubanIds), isNotNull(doubanMapping.imdbId)));
 
-  const mappingCache = new Map(existingMappings.map((m) => [m.doubanId, m.tmdbId]));
+  console.log(existingMappings);
+
+  const mappingCache = new Map(existingMappings.map((m) => [m.doubanId, m.imdbId]));
 
   // 3. 对缺失映射的条目并行搜索 TMDB
   const missingItems = items.filter((item) => !mappingCache.has(item.id));
-  const searchResults = await Promise.all(missingItems.map((item) => searchTmdbId(item)));
+  const searchResults = await Promise.all(
+    missingItems.map(async (item) => {
+      const info = await doubanDetailDescCache.fetch(item.id.toString());
+      if (!info) return null;
+      const imdbId = info.find((v) => v.key === "IMDb")?.value;
+      return imdbId ?? null;
+    }),
+  );
 
   // 4. 批量插入新映射到数据库
-  const newMappings: { doubanId: number; tmdbId: number }[] = [];
+  const newMappings: { doubanId: number; imdbId: string }[] = [];
   for (const [i, item] of missingItems.entries()) {
-    const tmdbId = searchResults[i];
-    if (tmdbId) {
-      mappingCache.set(item.id, tmdbId);
-      newMappings.push({ doubanId: item.id, tmdbId });
+    const imdbId = searchResults[i];
+    if (imdbId) {
+      mappingCache.set(item.id, imdbId);
+      newMappings.push({ doubanId: item.id, imdbId });
     }
   }
   if (newMappings.length > 0) {
-    await db.insert(doubanMapping).values(newMappings);
+    await db
+      .insert(doubanMapping)
+      .values(newMappings)
+      .onConflictDoUpdate({
+        target: doubanMapping.doubanId,
+        set: { imdbId: sql`excluded.imdb_id` },
+      });
   }
 
-  const metas = items.map<MetaPreview>((item) => ({
-    id: mappingCache.has(item.id) ? `tmdb:${mappingCache.get(item.id)}` : `douban:${item.id}`,
-    name: item.title,
-    type: item.type === "tv" ? "series" : "movie",
-    poster: item.cover ?? "",
-    description: item.description ?? undefined,
-    background: item.photos?.[0] ?? undefined,
-  }));
+  const metas = items.map<MetaPreview>((item) => {
+    const imdbId = mappingCache.get(item.id);
+    return {
+      id: imdbId ?? `douban:${item.id}`,
+      name: item.title,
+      type: item.type === "tv" ? "series" : "movie",
+      poster: item.cover ?? "",
+      description: item.description ?? undefined,
+      background: item.photos?.[0] ?? undefined,
+    };
+  });
 
   return c.json({
     metas,

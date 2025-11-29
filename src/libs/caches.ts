@@ -1,6 +1,7 @@
+import * as cheerio from "cheerio";
 import { LRUCache } from "lru-cache";
 import z from "zod";
-import { http } from "./http";
+import { http, weappHttp } from "./http";
 import { doubanSubjectCollectionSchema, doubanSubjectDetailSchema } from "./schema";
 
 export const doubanSubjectCollectionCache = new LRUCache<string, z.output<typeof doubanSubjectCollectionSchema>>({
@@ -47,5 +48,29 @@ export const doubanSubjectDetailCache = new LRUCache<string, z.output<typeof dou
       return undefined;
     }
     return data;
+  },
+});
+
+export const doubanDetailDescCache = new LRUCache<string, { key: string; value: string }[]>({
+  max: 500,
+  ttl: 1000 * 60 * 30,
+  fetchMethod: async (key, _, { signal }) => {
+    const resp = await weappHttp.get<{ html: string }>(`https://frodo.douban.com/api/v2/movie/${key}/desc`, {
+      params: {
+        apiKey: process.env.DOUBAN_API_KEY,
+      },
+      signal,
+    });
+    const $ = cheerio.load(resp.data.html);
+    const info = $(".subject-desc table")
+      .find("tr")
+      .map((_, el) => {
+        const $el = $(el);
+        const key = $el.find("td:first-child").text().trim();
+        const value = $el.find("td:last-child").text().trim();
+        return { key, value };
+      })
+      .toArray();
+    return info;
   },
 });
