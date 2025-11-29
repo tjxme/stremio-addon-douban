@@ -1,0 +1,39 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "stremio-addon-douban",
+	"main": "src/index.ts",
+	"compatibility_date": "2025-11-28",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	// "vars": {
+	//   "MY_VAR": "my-variable"
+	// },
+	// "kv_namespaces": [
+	//   {
+	//     "binding": "MY_KV_NAMESPACE",
+	//     "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+	//   }
+	// ],
+	// "r2_buckets": [
+	//   {
+	//     "binding": "MY_BUCKET",
+	//     "bucket_name": "my-bucket"
+	//   }
+	// ],
+	"d1_databases": [
+		{
+			"binding": "stremio_addon_douban",
+			"database_name": "stremio-addon-douban",
+			"database_id": "543ed1d5-3da8-4ed1-8084-25084af52953",
+			"remote": true
+		},
+	],
+	// "ai": {
+	//   "binding": "AI"
+	// },
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 1
+	}
+}

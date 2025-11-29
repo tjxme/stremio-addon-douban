@@ -1,0 +1,189 @@
+import type { ManifestCatalog, MetaPreview, WithCache } from "@stremio-addon/sdk";
+import { inArray } from "drizzle-orm";
+import { type Env, Hono } from "hono";
+import { z } from "zod";
+import { doubanMapping, getDrizzle } from "./db";
+import { doubanSubjectCollectionCache, tmdbDetailCache } from "./libs/caches";
+import { http, tmdbHttp } from "./libs/http";
+import { matchResourceRoute } from "./libs/router";
+import {
+  type DoubanSubjectCollectionItem,
+  type tmdbSearchResultItemSchema,
+  tmdbSearchResultSchema,
+} from "./libs/schema";
+
+export const catalogRouter = new Hono<Env>();
+
+type TmdbSearchResult = z.output<typeof tmdbSearchResultItemSchema>;
+
+/** 从豆瓣获取原始标题 */
+async function fetchDoubanOriginalTitle(doubanId: number): Promise<string | null> {
+  try {
+    const resp = await http.post(`https://api.douban.com/v2/movie/subject/${doubanId}`, {
+      apikey: process.env.DOUBAN_API_KEY,
+    });
+    const { success, data, error } = z
+      .object({
+        original_title: z.string().nullable(),
+      })
+      .safeParse(resp.data);
+    if (!success) {
+      console.warn(z.prettifyError(error));
+      return null;
+    }
+    return data.original_title ?? null;
+  } catch (error) {
+    console.warn(error);
+    return null;
+  }
+}
+
+/** 从候选结果中精确匹配 TMDB ID */
+async function matchTmdbFromCandidates(
+  candidates: TmdbSearchResult[],
+  item: DoubanSubjectCollectionItem,
+): Promise<number | null> {
+  // 1. 按中文名精确匹配
+  const byName = candidates.filter((v) => v.finalName === item.title);
+  if (byName.length === 1) return byName[0].id;
+
+  // 2. 如果有多个同名结果，尝试用原始标题匹配
+  const toMatch = byName.length > 1 ? byName : candidates;
+  const originalTitle = await fetchDoubanOriginalTitle(item.id);
+  if (originalTitle) {
+    const byOriginal = toMatch.filter((v) => v.finalOriginalName === originalTitle);
+    if (byOriginal.length === 1) return byOriginal[0].id;
+    if (byOriginal.length > 1) {
+      console.warn("无法精准匹配 TMDB ID (多个原始标题匹配):", byOriginal, item);
+    }
+  }
+
+  return null;
+}
+
+/** 从 TMDB 搜索单个条目的 ID */
+async function searchTmdbId(item: DoubanSubjectCollectionItem): Promise<number | null> {
+  const resp = await tmdbHttp.get(`/search/${item.type}`, {
+    params: {
+      query: item.title,
+      language: "zh-CN",
+      year: item.card_subtitle?.split("/")?.[0].trim(),
+    },
+  });
+  const { success, data, error } = tmdbSearchResultSchema.safeParse(resp.data);
+  if (!success) {
+    console.warn(z.prettifyError(error));
+    return null;
+  }
+
+  if (data.results.length === 0) return null;
+  if (data.results.length === 1) return data.results[0].id;
+
+  return matchTmdbFromCandidates(data.results, item);
+}
+
+catalogRouter.get("*", async (c) => {
+  const [matched, params] = matchResourceRoute(c.req.path);
+  if (!matched) {
+    return c.json({ error: "Not found" }, 404);
+  }
+
+  const db = getDrizzle(c.env);
+
+  // 1. 获取豆瓣集合数据
+  const data = await doubanSubjectCollectionCache.fetch(`${params.id}:${params.extra?.skip ?? 0}`);
+  if (!data) {
+    return c.json({ error: "Not found" }, 404);
+  }
+  const items = data.subject_collection_items;
+  if (items.length === 0) {
+    return c.json({ metas: [] } satisfies WithCache<{ metas: MetaPreview[] }>);
+  }
+
+  // 2. 批量查询数据库中已有的映射
+  const doubanIds = items.map((item) => item.id);
+  const existingMappings = await db
+    .select({ doubanId: doubanMapping.doubanId, tmdbId: doubanMapping.tmdbId })
+    .from(doubanMapping)
+    .where(inArray(doubanMapping.doubanId, doubanIds));
+
+  const mappingCache = new Map(existingMappings.map((m) => [m.doubanId, m.tmdbId]));
+
+  // 3. 对缺失映射的条目并行搜索 TMDB
+  const missingItems = items.filter((item) => !mappingCache.has(item.id));
+  const searchResults = await Promise.all(missingItems.map((item) => searchTmdbId(item)));
+
+  // 4. 批量插入新映射到数据库
+  const newMappings: { doubanId: number; tmdbId: number }[] = [];
+  for (const [i, item] of missingItems.entries()) {
+    const tmdbId = searchResults[i];
+    if (tmdbId) {
+      mappingCache.set(item.id, tmdbId);
+      newMappings.push({ doubanId: item.id, tmdbId });
+    }
+  }
+  if (newMappings.length > 0) {
+    await db.insert(doubanMapping).values(newMappings);
+  }
+
+  // 5. 并行获取所有 TMDB 详情
+  const detailPromises = items.map<Promise<MetaPreview | null>>(async (item) => {
+    const tmdbId = mappingCache.get(item.id);
+    if (!tmdbId) return null;
+    const detail = await tmdbDetailCache.fetch(`${item.type}:${tmdbId}`);
+    if (!detail) return null;
+    return {
+      id: `tmdb:${tmdbId}`,
+      name: detail.finalName ?? detail.finalOriginalName ?? "",
+      description: detail.overview ?? "",
+      type: item.type === "tv" ? "series" : "movie",
+      poster: detail.poster_path,
+      background: detail.backdrop_path,
+    };
+  });
+  const detailResults = await Promise.all(detailPromises);
+
+  // 6. 过滤掉 null 结果，保持原始顺序
+  const metas = detailResults.filter((r): r is MetaPreview => r !== null);
+
+  return c.json({ metas } satisfies WithCache<{ metas: MetaPreview[] }>);
+});
+
+export const getCatalogs = async () => {
+  const collectionIds: Array<ManifestCatalog & { total: number | "fetch" }> = [
+    { id: "movie_hot_gaia", name: "豆瓣热门电影", type: "movie", total: "fetch" },
+    { id: "tv_hot", name: "豆瓣热播剧集", type: "series", total: "fetch" },
+    { id: "show_hot", name: "豆瓣热播综艺", type: "series", total: "fetch" },
+    { id: "tv_animation", name: "豆瓣热门动画", type: "series", total: "fetch" },
+    { id: "movie_showing", name: "豆瓣影院热映", type: "movie", total: "fetch" },
+    { id: "movie_real_time_hotest", name: "豆瓣实时热门电影", type: "movie", total: 10 },
+    { id: "tv_real_time_hotest", name: "豆瓣实时热门电视", type: "series", total: 10 },
+    { id: "movie_top250", name: "豆瓣电影 Top250", type: "movie", total: 250 },
+    { id: "movie_weekly_best", name: "豆瓣一周口碑电影榜", type: "movie", total: 10 },
+    { id: "tv_chinese_best_weekly", name: "豆瓣华语口碑剧集榜", type: "series", total: 10 },
+    { id: "tv_global_best_weekly", name: "豆瓣全球口碑剧集榜", type: "series", total: 10 },
+    { id: "show_chinese_best_weekly", name: "豆瓣华语口碑综艺榜", type: "series", total: 10 },
+    { id: "show_global_best_weekly", name: "豆瓣全球口碑综艺榜", type: "series", total: 10 },
+  ];
+  const catalogs = await Promise.allSettled(
+    collectionIds.map(async (catalog) => {
+      const result: ManifestCatalog & { total: number } = {
+        ...catalog,
+        total: catalog.total === "fetch" ? 0 : catalog.total,
+      };
+      if (catalog.total === "fetch") {
+        const data = await doubanSubjectCollectionCache.fetch(`${catalog.id}:0`);
+        result.total = data?.total ?? 0;
+      }
+      if (result.total > 10) {
+        result.extra ??= [];
+        result.extra.push({
+          name: "skip",
+          options: Array.from({ length: Math.ceil(result.total / 10) }, (_, i) => (i * 10).toString()),
+        });
+      }
+      return result;
+    }),
+  );
+  return catalogs.filter((v) => v.status === "fulfilled").map((v) => v.value);
+};
