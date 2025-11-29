@@ -56,10 +56,42 @@ export const doubanSubjectCollectionSchema = z.object({
 });
 
 export const doubanSubjectDetailSchema = z.object({
+  type: z.enum(["movie", "tv"]),
   title: z.string(),
   original_title: z.string().nullish(),
   intro: z.string().nullish(),
   cover_url: z.string().nullish(),
+  pic: z
+    .object({
+      large: z.string().nullish(),
+      normal: z.string().nullish(),
+    })
+    .nullish(),
+  directors: z
+    .array(
+      z.object({
+        name: z.string(),
+      }),
+    )
+    .nullish(),
+  actors: z
+    .array(
+      z.object({
+        name: z.string(),
+      }),
+    )
+    .nullish(),
+  genres: z.array(z.string()).nullish(),
+  countries: z.array(z.string()).nullish(),
+  honor_infos: z
+    .array(
+      z.object({
+        title: z.string(),
+      }),
+    )
+    .nullish(),
+  languages: z.array(z.string()).nullish(),
+  pubdate: z.array(z.string()).nullish(),
 });
 
 const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/original";

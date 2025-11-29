@@ -47,7 +47,7 @@ export const doubanSubjectCollectionCache = new LRUCache<string, z.output<typeof
   },
 });
 
-export const doubanSubjectDetailCache = new LRUCache<number, z.output<typeof doubanSubjectDetailSchema>>({
+export const doubanSubjectDetailCache = new LRUCache<string, z.output<typeof doubanSubjectDetailSchema>>({
   max: 500,
   ttl: 1000 * 60 * 30,
   fetchMethod: async (key, _, { signal }) => {
