@@ -14,7 +14,7 @@ app.use(
   }),
 );
 app.use("*", cors());
-app.use(logger((str, ...rest) => console.info(`[${new Date().toISOString()}]`, str, ...rest)));
+app.use(logger((...args) => console.info(`[${new Date().toISOString()}]`, ...args)));
 
 app.get("/", (c) => {
   c.env;
