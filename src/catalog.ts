@@ -65,20 +65,22 @@ catalogRouter.get("*", async (c) => {
   // 构建响应
   const metas = items.map((item) => {
     const mapping = mappingCache.get(item.id);
-    const extraId = {
-      imdb_id: mapping?.imdbId ?? undefined,
-      tmdbId: mapping?.tmdbId ?? undefined,
-    };
-    const result: MetaPreview = {
+    const { imdbId, tmdbId } = mapping ?? {};
+
+    return {
       id: generateId(item.id, mapping),
       name: item.title,
       type: item.type === "tv" ? "series" : "movie",
       poster: item.cover ?? "",
       description: item.description ?? undefined,
       background: item.photos?.[0],
-      ...extraId,
-    };
-    return result;
+
+      // 协议外的字段，但是播放器会识别，不过不确实字段是蛇形还是驼峰，这里都返回
+      imdb_id: imdbId,
+      imdbId,
+      tmdb_id: tmdbId,
+      tmdbId,
+    } as MetaPreview;
   });
 
   return c.json({
