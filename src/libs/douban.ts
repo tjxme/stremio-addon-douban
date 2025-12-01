@@ -76,7 +76,13 @@ export class Douban {
         }
         console.info("🐢 L2 Cache Miss", keyPrefix, key);
         const data = await fetcher(key, signal);
-        this.context.executionCtx.waitUntil(cache.put(cacheKey, new Response(JSON.stringify(data))));
+        const maxAge = ttl / 1000;
+        const response = new Response(JSON.stringify(data), {
+          headers: {
+            "Cache-Control": `public, max-age=${maxAge}, s-maxage=${maxAge}`,
+          },
+        });
+        this.context.executionCtx.waitUntil(cache.put(cacheKey, response));
         return data;
       },
     });

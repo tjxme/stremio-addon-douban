@@ -95,17 +95,20 @@ export const tmdbSearchResultSchema = z.object({
         id: z.coerce.number(),
         title: z.string(),
         original_title: z.string().nullish(),
+        release_date: z.string().nullish(),
       }),
       z
         .object({
           id: z.coerce.number(),
           name: z.string(),
           original_name: z.string().nullish(),
+          first_air_date: z.string().nullish(),
         })
         .transform((v) => ({
           id: v.id,
           title: v.name,
           original_title: v.original_name,
+          release_date: v.first_air_date,
         })),
     ]),
   ),
