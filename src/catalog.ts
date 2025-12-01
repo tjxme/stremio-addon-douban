@@ -63,15 +63,22 @@ catalogRouter.get("*", async (c) => {
   c.executionCtx.waitUntil(douban.persistDoubanIdMapping(newMappings));
 
   // 构建响应
-  const metas = items.map<MetaPreview>((item) => {
-    return {
-      id: generateId(item.id, mappingCache.get(item.id)),
+  const metas = items.map((item) => {
+    const mapping = mappingCache.get(item.id);
+    const extraId = {
+      imdb_id: mapping?.imdbId ?? undefined,
+      tmdbId: mapping?.tmdbId ?? undefined,
+    };
+    const result: MetaPreview = {
+      id: generateId(item.id, mapping),
       name: item.title,
       type: item.type === "tv" ? "series" : "movie",
       poster: item.cover ?? "",
       description: item.description ?? undefined,
       background: item.photos?.[0],
+      ...extraId,
     };
+    return result;
   });
 
   return c.json({

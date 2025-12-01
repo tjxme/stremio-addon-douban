@@ -160,8 +160,8 @@ export class Douban {
       });
   }
 
-  private async findTmdbId(parmas: FindTmdbIdParams) {
-    const { type, doubanId, originalTitle, year: defaultYear } = parmas;
+  private async findTmdbId(params: FindTmdbIdParams) {
+    const { type, doubanId, originalTitle, year: defaultYear } = params;
     let query = originalTitle;
     let year = defaultYear;
     if (!query) {
@@ -201,34 +201,34 @@ export class Douban {
     return null;
   }
 
-  async findExternalId(parmas: FindTmdbIdParams) {
+  async findExternalId(params: FindTmdbIdParams) {
     const result: DoubanIdMapping = {
-      doubanId: parmas.doubanId,
+      doubanId: params.doubanId,
       imdbId: null,
       tmdbId: null,
     };
     // 二者有其一即可，优先使用 IMDb ID
     try {
-      const detail = await this.getSubjectDetailDesc(parmas.doubanId);
+      const detail = await this.getSubjectDetailDesc(params.doubanId);
       if (detail?.IMDb) {
-        console.info("🔍 Douban ID => IMDb ID", parmas.doubanId, detail.IMDb);
+        console.info("🔍 Douban ID => IMDb ID", params.doubanId, detail.IMDb);
         result.imdbId = detail.IMDb;
       }
     } catch (error) {
-      console.error("🔍 Douban ID => IMDb ID Error", parmas.doubanId, error);
+      console.error("🔍 Douban ID => IMDb ID Error", params.doubanId, error);
     }
     if (!result.imdbId) {
       try {
-        const tmdbId = await this.findTmdbId(parmas);
+        const tmdbId = await this.findTmdbId(params);
         if (tmdbId) {
-          console.info("🔍 Douban ID => TMDb ID", parmas.doubanId, tmdbId);
+          console.info("🔍 Douban ID => TMDb ID", params.doubanId, tmdbId);
           result.tmdbId = tmdbId;
         }
       } catch (error) {
-        console.error("🔍 Douban ID => TMDb ID Error", parmas.doubanId, error);
+        console.error("🔍 Douban ID => TMDb ID Error", params.doubanId, error);
       }
     }
-    console.info("🔍 Douban ID => Result", parmas.doubanId, result);
+    console.info("🔍 Douban ID => Result", params.doubanId, result);
     return result;
   }
 }
