@@ -176,7 +176,9 @@ export class Douban {
         mappedIds.add(doubanId);
       }
     }
-    console.log("mappingCache", mappingCache);
+    if (mappedIds.size > 0) {
+      console.info("🔍 Found", mappedIds.size, "mapped ids in database");
+    }
     const missingIds = doubanIds.filter((id) => !mappedIds.has(id));
     return { mappingCache, missingIds };
   }
