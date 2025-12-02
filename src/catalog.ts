@@ -49,8 +49,7 @@ catalogRouter.get("*", async (c) => {
       return douban.findExternalId({
         doubanId,
         type: item?.type,
-        originalTitle: item?.original_title ?? undefined,
-        year: item?.year ?? undefined,
+        title: item?.title ?? undefined,
       });
     }),
   );

@@ -12,8 +12,7 @@ import { doubanSubjectCollectionSchema, doubanSubjectDetailSchema } from "./sche
 interface FindTmdbIdParams {
   type: "movie" | "tv";
   doubanId: number;
-  originalTitle?: string;
-  year?: string;
+  title?: string;
 }
 
 export class Douban {
@@ -215,22 +214,23 @@ export class Douban {
     return null;
   }
 
-  private async findIdByTraktSearch(params: FindTmdbIdParams) {
-    const { type, doubanId, originalTitle } = params;
-    let query = originalTitle;
-
-    if (!query) {
-      const detail = await this.getSubjectDetail(doubanId);
-      if (detail) {
-        query = detail.original_title || detail.title;
-      }
+  private cleanTraktSearchTitle(title?: string) {
+    if (!title) {
+      return null;
     }
+    // 支持匹配阿拉伯数字和中文数字的“第X季”或类如“（第二季）”的内容
+    // 匹配形如 (第2季)、(第二季)、(第十二季) 等内容
+    return title.replace(/\s*（?第?[0-9一二三四五六七八九十百零]+季）?\s*/g, "").trim();
+  }
+
+  private async findIdByTraktSearch(params: FindTmdbIdParams) {
+    const { type, title } = params;
     const traktType = type === "tv" ? "show" : "movie";
     const resp = await this.request<SearchResultResponse[]>({
       baseURL: TraktBaseUrl.production,
       url: `/search/${traktType}`,
-      params: { query },
-      cache: { key: `trakt:search:${traktType}:${query}`, ttl: 1000 * SECONDS_PER_HOUR },
+      params: { query: title },
+      cache: { key: `trakt:search:${traktType}:${title}`, ttl: 1000 * SECONDS_PER_HOUR },
     });
     const data = z.array(searchResultResponseSchema).parse(resp);
     if (data.length === 0) {
@@ -239,11 +239,13 @@ export class Douban {
     if (data.length === 1) {
       return this.getTraktSearchField(data[0], "ids");
     }
-    const nameMatches = data.filter(
-      (result) =>
-        this.getTraktSearchField(result, "title") === query ||
-        this.getTraktSearchField(result, "original_title") === query,
-    );
+    const cleanTitle = this.cleanTraktSearchTitle(title);
+    const titleSet = new Set([title, cleanTitle].filter(Boolean));
+    const nameMatches = data.filter((result) => {
+      const traktTitle = this.getTraktSearchField(result, "title");
+      const traktOriginalTitle = this.getTraktSearchField(result, "original_title");
+      return titleSet.has(traktTitle) || titleSet.has(traktOriginalTitle);
+    });
 
     if (nameMatches.length === 1) {
       return this.getTraktSearchField(nameMatches[0], "ids");
