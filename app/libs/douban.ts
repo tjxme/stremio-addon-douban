@@ -88,7 +88,7 @@ export class Douban {
   }
 
   get db() {
-    return drizzle(this.context.env.stremio_addon_douban);
+    return drizzle(this.context.env.STREMIO_ADDON_DOUBAN);
   }
 
   //#region Subject Collection

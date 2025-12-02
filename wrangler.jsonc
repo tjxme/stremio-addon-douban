@@ -10,33 +10,24 @@
   "placement": {
     "mode": "smart"
   },
-  // "vars": {
-  //   "MY_VAR": "my-variable"
-  // },
-  // "kv_namespaces": [
-  //   {
-  //     "binding": "MY_KV_NAMESPACE",
-  //     "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-  //   }
-  // ],
-  // "r2_buckets": [
-  //   {
-  //     "binding": "MY_BUCKET",
-  //     "bucket_name": "my-bucket"
-  //   }
-  // ],
   "d1_databases": [
     {
-      "binding": "stremio_addon_douban",
+      "binding": "STREMIO_ADDON_DOUBAN",
       "database_name": "stremio-addon-douban",
       "database_id": "543ed1d5-3da8-4ed1-8084-25084af52953",
       "remote": true
     }
   ],
-  // "ai": {
-  //   "binding": "AI"
-  // },
-
+  "ratelimits": [
+    {
+      "name": "PUBLIC_RATE_LIMIT",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 60,
+        "period": 60
+      }
+    }
+  ],
   "observability": {
     "logs": {
       "enabled": true,

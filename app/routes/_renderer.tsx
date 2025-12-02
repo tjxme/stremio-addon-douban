@@ -12,7 +12,7 @@ export default jsxRenderer(({ children }) => {
         <Link href="/app/style.css" rel="stylesheet" />
         <Script src="/app/client.ts" async />
       </head>
-      <body>{children}</body>
+      <body className="bg-slate-900">{children}</body>
     </html>
   );
 });
