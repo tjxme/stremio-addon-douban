@@ -21,7 +21,7 @@ metaRouter.get("*", async (c) => {
     return c.notFound();
   }
 
-  api.initialize(c);
+  api.initialize(c.env, c.executionCtx);
 
   let doubanId: string | number | undefined;
   let imdbId: string | undefined | null;
