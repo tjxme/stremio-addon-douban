@@ -10,6 +10,12 @@
   "placement": {
     "mode": "smart"
   },
+  "routes": [
+    {
+      "pattern": "stremio-addon-douban.baran.wang",
+      "custom_domain": true
+    }
+  ],
   "d1_databases": [
     {
       "binding": "STREMIO_ADDON_DOUBAN",
