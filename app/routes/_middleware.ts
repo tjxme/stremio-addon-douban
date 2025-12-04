@@ -13,4 +13,12 @@ const rateLimitMiddleware = createMiddleware<Env>(async (c, next) => {
   await next();
 });
 
-export default createRoute(logger(), cors(), rateLimitMiddleware);
+const userAgentMiddleware = createMiddleware<Env>(async (c, next) => {
+  const userAgent = c.req.header("User-Agent");
+  if (!userAgent) {
+    return c.text("Forbidden", 403);
+  }
+  await next();
+});
+
+export default createRoute(logger(), cors(), rateLimitMiddleware, userAgentMiddleware);
