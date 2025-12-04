@@ -33,10 +33,11 @@ export class BaseAPI {
     const cacheConfig = config.cache;
     const requestKey = cacheConfig?.key;
 
+    const cache = caches.default;
+    const cacheKey = new Request(`https://cache.internal/${requestKey}`);
+
     // 1. 检查持久化缓存
     if (cacheConfig) {
-      const cache = caches.default;
-      const cacheKey = new Request(`https://cache.internal/${requestKey}`);
       const cachedRes = await cache.match(cacheKey);
       if (cachedRes) {
         console.info("⚡️ Cache Hit", requestKey);
@@ -59,8 +60,6 @@ export class BaseAPI {
 
         // 写入持久化缓存
         if (cacheConfig) {
-          const cache = caches.default;
-          const cacheKey = new Request(`https://cache.internal/${requestKey}`);
           const response = new Response(JSON.stringify(respData), {
             headers: {
               "Cache-Control": `public, max-age=${cacheConfig.ttl / 1000}, s-maxage=${cacheConfig.ttl / 1000}`,
