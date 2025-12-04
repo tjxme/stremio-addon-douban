@@ -4,6 +4,7 @@ import { z } from "zod/v4";
 import { type DoubanIdMapping, doubanMapping, doubanMappingSchema } from "@/db";
 import { BaseAPI } from "./base";
 import { DoubanAPI } from "./douban";
+import { ImdbAPI } from "./imdb";
 import { TraktAPI } from "./trakt";
 
 interface FindIdParams {
@@ -20,10 +21,13 @@ class API extends BaseAPI {
 
   traktAPI = new TraktAPI();
 
+  imdbAPI = new ImdbAPI();
+
   initialize(env: CloudflareBindings, ctx: ExecutionContext) {
     super.initialize(env, ctx);
     this.doubanAPI.initialize(env, ctx);
     this.traktAPI.initialize(env, ctx);
+    this.imdbAPI.initialize(env, ctx);
   }
 
   async fetchIdMapping(doubanIds: number[]) {

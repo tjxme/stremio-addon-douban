@@ -1,7 +1,8 @@
 import { and, isNull, ne, or } from "drizzle-orm";
 import { createApp } from "honox/server";
+import type { z } from "zod/v4";
 import { type DoubanIdMapping, doubanMapping } from "@/db";
-import { api } from "@/libs/api";
+import { api, type doubanSubjectDetailSchema } from "@/libs/api";
 
 const app = createApp();
 
@@ -40,31 +41,49 @@ export default {
       const results = await Promise.all(
         group.map<Promise<DoubanIdMapping | null>>(async (item) => {
           const { doubanId, imdbId } = item;
+          let doubanDetail: z.output<typeof doubanSubjectDetailSchema> | null = null;
           if (imdbId) {
-            const data = await api.traktAPI.searchByImdbId(imdbId).catch(() => []);
+            let data = await api.traktAPI.searchByImdbId(imdbId).catch(() => []);
+            if (data.length === 0) {
+              // 豆瓣有些剧是用的某一季的 imdb，尝试搜索一下
+              doubanDetail = await api.doubanAPI.getSubjectDetail(doubanId).catch(() => null);
+              if (doubanDetail && doubanDetail.type === "tv") {
+                const resp = await api.imdbAPI.search(imdbId);
+                if (resp.top?.series?.series?.id) {
+                  data = await api.traktAPI.searchByImdbId(resp.top.series.series.id).catch(() => []);
+                }
+              }
+            }
             if (data.length === 1) {
               return formatIdMapping(doubanId, api.traktAPI.getSearchResultField(data[0], "ids"));
             }
           }
-          const detail = await api.doubanAPI.getSubjectDetail(doubanId);
-          if (detail) {
-            const results = await api.traktAPI.search(detail.type === "movie" ? "movie" : "show", detail.title);
+          if (!doubanDetail) {
+            doubanDetail = await api.doubanAPI.getSubjectDetail(doubanId).catch(() => null);
+          }
+          if (doubanDetail) {
+            const results = await api.traktAPI.search(
+              doubanDetail.type === "movie" ? "movie" : "show",
+              doubanDetail.title,
+            );
             if (results.length === 1) {
               return formatIdMapping(doubanId, api.traktAPI.getSearchResultField(results[0], "ids"));
             }
 
             // 尝试比对一下原始标题，如果只有一个结果，则直接返回
             const originalTitleMatches = results.filter(
-              (item) => api.traktAPI.getSearchResultField(item, "original_title") === detail.original_title,
+              (item) =>
+                api.traktAPI.getSearchResultField(item, "original_title") ===
+                (doubanDetail.original_title || doubanDetail.title),
             );
             if (originalTitleMatches.length === 1) {
               return formatIdMapping(doubanId, api.traktAPI.getSearchResultField(originalTitleMatches[0], "ids"));
             }
 
             // 电影尝试比对一下年份，如果只有一个结果，则直接返回
-            if (detail.type === "movie") {
+            if (doubanDetail.type === "movie") {
               const yearsMatches = results.filter(
-                (item) => api.traktAPI.getSearchResultField(item, "year")?.toString() === detail.year?.toString(),
+                (item) => api.traktAPI.getSearchResultField(item, "year")?.toString() === doubanDetail.year?.toString(),
               );
               if (yearsMatches.length === 1) {
                 return formatIdMapping(doubanId, api.traktAPI.getSearchResultField(yearsMatches[0], "ids"));
