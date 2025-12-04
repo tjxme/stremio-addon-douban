@@ -32,6 +32,14 @@
         "limit": 60,
         "period": 60
       }
+    },
+    {
+      "name": "USER_AGENT_MISSING_RATE_LIMIT",
+      "namespace_id": "1002",
+      "simple": {
+        "limit": 1,
+        "period": 60
+      }
     }
   ],
   "observability": {

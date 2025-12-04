@@ -6,19 +6,18 @@ import { createRoute } from "honox/factory";
 
 const rateLimitMiddleware = createMiddleware<Env>(async (c, next) => {
   const key = c.req.header("cf-connecting-ip") ?? "unknown";
-  const { success } = await c.env.PUBLIC_RATE_LIMIT.limit({ key });
-  if (!success) {
-    return c.json({ error: "Rate limit exceeded" }, 429);
-  }
-  await next();
-});
-
-const userAgentMiddleware = createMiddleware<Env>(async (c, next) => {
   const userAgent = c.req.header("User-Agent");
   if (!userAgent) {
-    return c.text("Forbidden", 403);
+    const { success } = await c.env.USER_AGENT_MISSING_RATE_LIMIT.limit({ key });
+    if (!success) {
+      return c.text("Rate limit exceeded", 429);
+    }
+  }
+  const { success } = await c.env.PUBLIC_RATE_LIMIT.limit({ key });
+  if (!success) {
+    return c.text("Rate limit exceeded", 429);
   }
   await next();
 });
 
-export default createRoute(logger(), cors(), rateLimitMiddleware, userAgentMiddleware);
+export default createRoute(logger(), cors(), rateLimitMiddleware);
