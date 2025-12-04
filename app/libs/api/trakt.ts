@@ -1,11 +1,14 @@
 import {
   episodeResponseSchema,
+  type SearchMovieResultResponse,
+  type SearchShowResultResponse,
   searchResultResponseSchema,
   showResponseSchema,
   Environment as TraktBaseUrl,
 } from "@trakt/api";
 import z from "zod";
 import pkg from "@/../package.json" with { type: "json" };
+import type { DoubanIdMapping } from "@/db";
 import { SECONDS_PER_DAY } from "../constants";
 import { BaseAPI } from "./base";
 
@@ -27,7 +30,7 @@ export class TraktAPI extends BaseAPI {
     super({ baseURL: TraktBaseUrl.production });
     this.axios.interceptors.request.use((config) => {
       config.headers.set("trakt-api-version", "2");
-      config.headers.set("trakt-api-key", this.context.env.TRAKT_CLIENT_ID || process.env.TRAKT_CLIENT_ID);
+      config.headers.set("trakt-api-key", this.env.TRAKT_CLIENT_ID || process.env.TRAKT_CLIENT_ID);
       config.headers.set("User-Agent", `${pkg.name}/${pkg.version}`);
       return config;
     });
@@ -41,6 +44,20 @@ export class TraktAPI extends BaseAPI {
       return data.movie?.[field];
     }
     return null;
+  }
+
+  formatIdsToIdMapping(
+    ids?:
+      | NonNullable<SearchMovieResultResponse["movie"]>["ids"]
+      | NonNullable<SearchShowResultResponse["show"]>["ids"]
+      | null,
+  ): Omit<DoubanIdMapping, "doubanId" | "calibrated"> | null {
+    if (!ids) return null;
+    return {
+      traktId: ids.trakt ?? null,
+      tmdbId: ids.tmdb ?? null,
+      imdbId: ids.imdb ?? null,
+    };
   }
 
   async search(type: "movie" | "show" | "episode", query: string) {

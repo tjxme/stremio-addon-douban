@@ -1,6 +1,5 @@
-import type { SearchMovieResultResponse, SearchShowResultResponse } from "@trakt/api";
 import { inArray, isNull, ne, or, sql } from "drizzle-orm";
-import type { Context, Env } from "hono";
+import type { ExecutionContext } from "hono";
 import { type DoubanIdMapping, doubanMapping } from "@/db";
 import { BaseAPI } from "./base";
 import { DoubanAPI } from "./douban";
@@ -20,10 +19,10 @@ class API extends BaseAPI {
 
   traktAPI = new TraktAPI();
 
-  initialize(context: Context<Env>) {
-    super.initialize(context);
-    this.doubanAPI.initialize(context);
-    this.traktAPI.initialize(context);
+  initialize(env: CloudflareBindings, ctx: ExecutionContext) {
+    super.initialize(env, ctx);
+    this.doubanAPI.initialize(env, ctx);
+    this.traktAPI.initialize(env, ctx);
   }
 
   async fetchIdMapping(doubanIds: number[]) {
@@ -72,16 +71,13 @@ class API extends BaseAPI {
       calibrated: 0,
     };
 
-    const assignTraktIds = (
-      ids?:
-        | NonNullable<SearchMovieResultResponse["movie"]>["ids"]
-        | NonNullable<SearchShowResultResponse["show"]>["ids"]
-        | null,
-    ) => {
-      if (!ids) return;
-      result.traktId = ids.trakt ?? null;
-      result.tmdbId = ids.tmdb ?? null;
-      result.imdbId = ids.imdb ?? null;
+    const assignTraktIds = (ids?: Parameters<typeof this.traktAPI.formatIdsToIdMapping>[0]) => {
+      const mapping = this.traktAPI.formatIdsToIdMapping(ids);
+      if (mapping) {
+        result.traktId = mapping.traktId;
+        result.tmdbId = mapping.tmdbId;
+        result.imdbId = mapping.imdbId;
+      }
     };
 
     // 1. 尝试从豆瓣详情页获取 IMDb ID

@@ -35,7 +35,7 @@ catalogRouter.get("*", async (c) => {
     return c.notFound();
   }
 
-  api.initialize(c);
+  api.initialize(c.env, c.executionCtx);
 
   // 获取豆瓣合集数据
   const skip = params.extra?.skip ?? c.req.query("skip") ?? 0;
@@ -116,7 +116,7 @@ catalogRouter.get("*", async (c) => {
 export default catalogRouter;
 
 export const getCatalogs = async (c: Context<Env>) => {
-  api.initialize(c);
+  api.initialize(c.env, c.executionCtx);
 
   const catalogs = await Promise.allSettled(
     collectionConfigs.map(async (catalog) => {

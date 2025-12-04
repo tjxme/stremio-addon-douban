@@ -1,18 +1,33 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type CreateAxiosDefaults } from "axios";
 import { drizzle } from "drizzle-orm/d1";
-import type { Context, Env } from "hono";
+import type { ExecutionContext } from "hono";
 
 export class BaseAPI {
-  private _context?: Context<Env>;
-
+  private _context?: ExecutionContext;
   protected get context() {
     if (!this._context) {
       throw new Error("Context not initialized");
     }
     return this._context;
   }
-  protected set context(context: Context<Env>) {
+  protected set context(context: ExecutionContext) {
     this._context = context;
+  }
+
+  private _env?: CloudflareBindings;
+  protected get env() {
+    if (!this._env) {
+      throw new Error("Env not initialized");
+    }
+    return this._env;
+  }
+  protected set env(env: CloudflareBindings) {
+    this._env = env;
+  }
+
+  initialize(env: CloudflareBindings, ctx: ExecutionContext) {
+    this.env = env;
+    this.context = ctx;
   }
 
   protected axios: AxiosInstance;
@@ -79,7 +94,7 @@ export class BaseAPI {
               "Cache-Control": `public, max-age=${cacheConfig.ttl / 1000}, s-maxage=${cacheConfig.ttl / 1000}`,
             },
           });
-          this.context.executionCtx.waitUntil(cache.put(cacheKey, response));
+          this.context.waitUntil(cache.put(cacheKey, response));
         }
 
         return respData;
@@ -101,11 +116,7 @@ export class BaseAPI {
     return promise;
   }
 
-  initialize(context: Context<Env>) {
-    this.context = context;
-  }
-
   get db() {
-    return drizzle(this.context.env.STREMIO_ADDON_DOUBAN);
+    return drizzle(this.env.STREMIO_ADDON_DOUBAN);
   }
 }

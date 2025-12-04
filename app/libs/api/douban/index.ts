@@ -23,7 +23,7 @@ export class DoubanAPI extends BaseAPI {
       const finalUri = axios.getUri(config);
       if (finalUri.startsWith("https://frodo.douban.com/")) {
         config.params ||= {};
-        config.params.apiKey = this.context.env.DOUBAN_API_KEY || process.env.DOUBAN_API_KEY;
+        config.params.apiKey = this.env.DOUBAN_API_KEY || process.env.DOUBAN_API_KEY;
       }
       return config;
     });
@@ -78,7 +78,7 @@ export class DoubanAPI extends BaseAPI {
       url: `https://api.douban.com/v2/movie/imdb/${imdbId}`,
       method: "POST",
       data: {
-        apikey: this.context.env.DOUBAN_API_KEY || process.env.DOUBAN_API_KEY,
+        apikey: this.env.DOUBAN_API_KEY || process.env.DOUBAN_API_KEY,
       },
       cache: {
         key: `douban_id_by_imdb_id:${imdbId}`,
@@ -87,7 +87,7 @@ export class DoubanAPI extends BaseAPI {
     });
     const doubanId = z.coerce.number().parse(resp.id?.split("/")?.pop());
     try {
-      this.context.executionCtx.waitUntil(
+      this.context.waitUntil(
         this.db
           .insert(doubanMapping)
           .values({ imdbId, doubanId })
