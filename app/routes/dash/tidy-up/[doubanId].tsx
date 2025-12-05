@@ -367,9 +367,9 @@ export default createRoute(async (c) => {
                     placeholder="请输入 IMDb ID (如 tt1234567)"
                   />
                   <Input name="traktId" label="Trakt ID" value={idMapping?.traktId} placeholder="请输入 Trakt ID" />
-                  <label>
-                    <input type="checkbox" switch checked={idMapping?.calibrated ?? false} />
-                    已校准
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" switch checked={idMapping?.calibrated ?? false} name="calibrated" />
+                    <span className="text-zinc-500 dark:text-zinc-400">已校准</span>
                   </label>
                 </CardContent>
                 <CardFooter className="justify-end gap-3">
