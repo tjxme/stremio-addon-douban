@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { createRoute } from "honox/factory";
+import { z } from "zod/v4";
 import { doubanMapping, doubanMappingSchema } from "@/db";
 import { api } from "@/libs/api";
 import {
@@ -28,16 +29,20 @@ export const POST = createRoute(async (c) => {
   api.initialize(c.env, c.executionCtx);
 
   const form = await c.req.formData();
-  const tmdbId = form.get("tmdbId");
-  const imdbId = form.get("imdbId");
-  const traktId = form.get("traktId");
-  const result = doubanMappingSchema.safeParse({ tmdbId, imdbId, traktId });
+
+  const result = doubanMappingSchema.safeParse({
+    doubanId,
+    tmdbId: form.get("tmdbId"),
+    imdbId: form.get("imdbId"),
+    traktId: form.get("traktId"),
+  });
   if (!result.success) {
-    return c.json({ error: result.error.message }, 400);
+    return c.json({ error: z.prettifyError(result.error) }, 400);
   }
+  const { tmdbId, imdbId, traktId } = result.data;
   await api.db
     .update(doubanMapping)
-    .set(result.data)
+    .set({ tmdbId, imdbId, traktId })
     .where(eq(doubanMapping.doubanId, Number.parseInt(doubanId, 10)));
   return c.redirect("/dash/tidy-up");
 });
