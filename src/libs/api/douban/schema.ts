@@ -23,6 +23,12 @@ const doubanSubjectCollectionItemSchema = z
     photos: z.array(z.string()).nullish(),
     description: z.string().nullish(),
     comment: z.string().nullish(),
+    rating: z
+      .object({
+        value: z.string().nullish(),
+      })
+      .nullish(),
+    url: z.string().nullish(),
   })
   .transform((v) => ({
     ...v,

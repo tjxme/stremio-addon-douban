@@ -81,6 +81,7 @@ catalogRoute.get("*", async (c) => {
       poster: item.cover ?? "",
       description: item.description ?? undefined,
       background: item.photos?.[0],
+      links: [{ name: `豆瓣评分：${item.rating?.value ?? "N/A"}`, category: "douban", url: item.url ?? "" }],
     };
     if (imdbId) {
       result.imdb_id = imdbId;
