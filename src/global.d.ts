@@ -7,3 +7,9 @@ declare module "hono" {
     Bindings: CloudflareBindings;
   }
 }
+
+declare global {
+  interface CacheStorage {
+    default: Cache;
+  }
+}

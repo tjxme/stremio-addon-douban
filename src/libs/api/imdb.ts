@@ -27,7 +27,7 @@ export class ImdbAPI extends BaseAPI {
     const resp = await this.request({
       url: "/search",
       params: { tt: imdbId },
-      cache: { key: `imdb_search:${imdbId}`, ttl: 1000 * SECONDS_PER_WEEK },
+      cache: { key: `imdb_search:${imdbId}`, ttl: SECONDS_PER_WEEK },
     });
     return searchResultSchema.parse(resp);
   }

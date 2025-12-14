@@ -4,7 +4,7 @@ import { isNull, ne, or } from "drizzle-orm";
 import { z } from "zod/v4";
 import { doubanMapping } from "@/db";
 import { SECONDS_PER_DAY, SECONDS_PER_HOUR, SECONDS_PER_WEEK } from "../../constants";
-import { BaseAPI } from "../base";
+import { BaseAPI, CacheType } from "../base";
 import {
   type DoubanSubjectCollectionCategory,
   doubanSubjectCollectionCategorySchema,
@@ -47,44 +47,48 @@ export class DoubanAPI extends BaseAPI {
       },
       cache: {
         key: `subject_collection_info:${collectionId}`,
-        ttl: 1000 * SECONDS_PER_WEEK,
+        ttl: SECONDS_PER_WEEK,
       },
     });
     return doubanSubjectCollectionInfoSchema.parse(resp);
   }
 
   async getSubjectCollectionCategory(collectionId: string) {
-    const generateCacheKey = (cid: string) => `subject_collection_category:${cid}`;
-    const cached = await this.context.env.KV.get<DoubanSubjectCollectionCategory>(
-      generateCacheKey(collectionId),
-      "json",
-    );
+    const getCacheKey = (collectionId: string) => `subject_collection_category:${collectionId}`;
+    const cacheKey = getCacheKey(collectionId);
+
+    // 尝试从 KV 获取缓存
+    const cached = await this.getCache<DoubanSubjectCollectionCategory>(getCacheKey(collectionId), {
+      type: CacheType.KV | CacheType.LOCAL,
+    });
     if (cached) {
-      console.log("⚡️ KV Cache Hit", collectionId);
+      console.info("⚡️ Cache Hit", cacheKey);
       return doubanSubjectCollectionCategorySchema.parse(cached);
     }
-    console.log("🐢 KV Cache Miss", collectionId);
 
+    // 获取 collection 信息
     const info = await this.getSubjectCollection(collectionId).catch(() => null);
-
     const tabs = info?.category_tabs ?? [];
     if (tabs.length === 0) {
       return null;
     }
 
+    // 查找当前 category 并预热所有子 collection 的缓存
     let category: DoubanSubjectCollectionCategory = null;
     for (const tab of tabs) {
-      const cid = tab?.items?.[0]?.id;
-      if (cid) {
-        this.context.ctx.waitUntil(
-          this.context.env.KV.put(generateCacheKey(cid), JSON.stringify(tab), {
-            expirationTtl: SECONDS_PER_WEEK,
-          }),
-        );
-      }
-      if (tab?.items?.find((item) => item.current)) {
+      const isCurrent = tab?.items?.some((item) => item.current);
+      if (isCurrent) {
         category = tab;
-        break;
+        break; // 找到当前 category 后不再预热其他 category
+      }
+
+      for (const item of tab?.items ?? []) {
+        if (item.id) {
+          this.setCache(getCacheKey(item.id), tab, {
+            type: CacheType.KV | CacheType.LOCAL,
+            ttl: SECONDS_PER_WEEK * 4,
+          });
+        }
       }
     }
 
@@ -100,7 +104,7 @@ export class DoubanAPI extends BaseAPI {
       },
       cache: {
         key: `subject_collection:${collectionId}:${skip}`,
-        ttl: 1000 * SECONDS_PER_HOUR * 2,
+        ttl: SECONDS_PER_HOUR * 2,
       },
     });
     return doubanSubjectCollectionSchema.parse(resp);
@@ -111,7 +115,8 @@ export class DoubanAPI extends BaseAPI {
       url: `/subject/${subjectId}`,
       cache: {
         key: `subject_detail:${subjectId}`,
-        ttl: 1000 * SECONDS_PER_DAY,
+        ttl: SECONDS_PER_DAY,
+        type: CacheType.KV | CacheType.LOCAL,
       },
     });
     return doubanSubjectDetailSchema.parse(resp);
@@ -122,7 +127,8 @@ export class DoubanAPI extends BaseAPI {
       url: `/subject/${subjectId}/desc`,
       cache: {
         key: `subject_detail_desc:${subjectId}`,
-        ttl: 1000 * SECONDS_PER_DAY,
+        ttl: SECONDS_PER_DAY,
+        type: CacheType.KV | CacheType.LOCAL,
       },
     });
     const $ = cheerioLoad(resp.html);
@@ -144,7 +150,7 @@ export class DoubanAPI extends BaseAPI {
       },
       cache: {
         key: `douban_id_by_imdb_id:${imdbId}`,
-        ttl: 1000 * SECONDS_PER_DAY,
+        ttl: SECONDS_PER_DAY,
       },
     });
     const doubanId = z.coerce.number().parse(resp.id?.split("/")?.pop());

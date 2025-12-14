@@ -64,7 +64,7 @@ export class TraktAPI extends BaseAPI {
     const resp = await this.request<SearchResultResponse[]>({
       url: `/search/${type}`,
       params: { query },
-      cache: { key: `trakt:search:${type}:${query}`, ttl: 1000 * SECONDS_PER_DAY },
+      cache: { key: `trakt:search:${type}:${query}`, ttl: SECONDS_PER_DAY },
     });
     return z.array(searchResultResponseSchemaWithEpisode).parse(resp);
   }
@@ -72,7 +72,7 @@ export class TraktAPI extends BaseAPI {
   async searchByImdbId(imdbId: string) {
     const resp = await this.request<SearchResultResponse[]>({
       url: `/search/imdb/${imdbId}`,
-      cache: { key: `trakt:search:imdb:${imdbId}`, ttl: 1000 * SECONDS_PER_DAY },
+      cache: { key: `trakt:search:imdb:${imdbId}`, ttl: SECONDS_PER_DAY },
     });
     return z.array(searchResultResponseSchemaWithEpisode).parse(resp);
   }
