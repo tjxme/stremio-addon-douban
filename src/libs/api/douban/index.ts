@@ -3,9 +3,14 @@ import { load as cheerioLoad } from "cheerio";
 import { isNull, ne, or } from "drizzle-orm";
 import { z } from "zod/v4";
 import { doubanMapping } from "@/db";
-import { SECONDS_PER_DAY, SECONDS_PER_HOUR } from "../../constants";
+import { SECONDS_PER_DAY, SECONDS_PER_HOUR, SECONDS_PER_WEEK } from "../../constants";
 import { BaseAPI } from "../base";
-import { doubanSubjectCollectionSchema, doubanSubjectDetailSchema } from "./schema";
+import {
+  type DoubanSubjectCollectionInfo,
+  doubanSubjectCollectionInfoSchema,
+  doubanSubjectCollectionSchema,
+  doubanSubjectDetailSchema,
+} from "./schema";
 
 export class DoubanAPI extends BaseAPI {
   static PAGE_SIZE = 10;
@@ -33,7 +38,61 @@ export class DoubanAPI extends BaseAPI {
     return this.context.env.DOUBAN_API_KEY || process.env.DOUBAN_API_KEY;
   }
 
-  async getSubjectCollection(collectionId: string, skip: string | number = 0) {
+  async getSubjectCollection(collectionId: string) {
+    const resp = await this.request({
+      url: `/subject_collection/${collectionId}`,
+      params: {
+        for_mobile: 1,
+      },
+      cache: {
+        key: `subject_collection_info:${collectionId}`,
+        ttl: 1000 * SECONDS_PER_WEEK,
+      },
+    });
+    return doubanSubjectCollectionInfoSchema.parse(resp);
+  }
+
+  async getSubjectCollectionCategory(collectionId: string) {
+    const generateCacheKey = (cid: string) => `subject_collection_category:${cid}`;
+    const cached = await this.context.env.KV.get<NonNullable<DoubanSubjectCollectionInfo["category_tabs"]>[number]>(
+      generateCacheKey(collectionId),
+      "json",
+    );
+    if (cached) {
+      console.log("⚡️ KV Cache Hit", collectionId);
+      return cached;
+    }
+    console.log("🐢 KV Cache Miss", collectionId);
+
+    const info = await this.getSubjectCollection(collectionId).catch(() => null);
+
+    const tabs = info?.category_tabs ?? [];
+    if (tabs.length === 0) {
+      return null;
+    }
+
+    this.context.executionCtx.waitUntil(
+      Promise.all(
+        tabs.map((tab) => {
+          const cid = tab.items?.[0].id;
+          if (!cid) {
+            return null;
+          }
+          return this.context.env.KV.put(generateCacheKey(cid), JSON.stringify(tab), {
+            expiration: 1000 * SECONDS_PER_WEEK,
+          });
+        }),
+      ),
+    );
+
+    const category = tabs.find((tab) => tab.items?.find((item) => item.current));
+    if (!category) {
+      return null;
+    }
+    return category;
+  }
+
+  async getSubjectCollectionItems(collectionId: string, skip: string | number = 0) {
     const resp = await this.request({
       url: `/subject_collection/${collectionId}/items`,
       params: {

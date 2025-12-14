@@ -4,7 +4,7 @@ import { Link, Script, ViteClient } from "vite-ssr-components/react";
 import pkg from "@/../package.json" with { type: "json" };
 import { Configure, type ConfigureProps } from "@/components/configure";
 import { decodeConfig, encodeConfig } from "@/libs/config";
-import { collectionConfigs } from "@/libs/constants";
+import { DEFAULT_COLLECTION_IDS } from "@/libs/constants";
 
 export const configureRoute = new Hono<Env>();
 
@@ -38,7 +38,7 @@ configureRoute.get("/", (c) => {
   const configId = c.req.param("config");
   const config = decodeConfig(configId ?? "");
 
-  const initialSelectedIds = config.catalogIds || collectionConfigs.map((item) => item.id);
+  const initialSelectedIds = config.catalogIds || DEFAULT_COLLECTION_IDS;
 
   const manifestUrl = new URL(c.req.url);
   manifestUrl.search = "";

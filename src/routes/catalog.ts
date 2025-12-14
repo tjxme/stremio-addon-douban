@@ -2,20 +2,18 @@ import type { AddonBuilder, MetaPreview } from "@stremio-addon/sdk";
 import { type Env, Hono } from "hono";
 import { api } from "@/libs/api";
 import { generateId } from "@/libs/catalog";
-import { collectionConfigs, RANK_ID_MAP, RankListType, SECONDS_PER_DAY, SECONDS_PER_WEEK } from "@/libs/constants";
+import { collectionConfigMap, SECONDS_PER_DAY, SECONDS_PER_WEEK } from "@/libs/constants";
 import { getExtraFactory, matchResourceRoute } from "@/libs/router";
 import { isForwardUserAgent } from "@/libs/utils";
 
 type CatalogResponse = Awaited<ReturnType<Parameters<AddonBuilder["defineCatalogHandler"]>[0]>>;
-
-const collectionIds = collectionConfigs.map((config) => config.id);
 
 export const catalogRoute = new Hono<Env>();
 
 catalogRoute.get("*", async (c) => {
   const [matched, params] = matchResourceRoute(c.req.path);
 
-  if (!matched || !collectionIds.includes(params.id)) {
+  if (!matched || !collectionConfigMap.has(params.id)) {
     return c.notFound();
   }
 
@@ -23,14 +21,16 @@ catalogRoute.get("*", async (c) => {
 
   // 获取豆瓣合集数据
   let collectionId = params.id;
-
-  if ([RankListType.Movie, RankListType.TV].includes(collectionId as RankListType)) {
-    const genre = getExtra("genre");
-    const rankMap = RANK_ID_MAP[collectionId as RankListType];
-    collectionId = rankMap[genre as string] ?? Object.values(rankMap)[0];
+  const genre = getExtra("genre");
+  if (genre) {
+    const category = await api.doubanAPI.getSubjectCollectionCategory(collectionId).catch(() => null);
+    const cid = category?.items?.find((item) => item.name === genre)?.id;
+    if (cid) {
+      collectionId = cid;
+    }
   }
   const skip = getExtra("skip") ?? 0;
-  const collectionData = await api.doubanAPI.getSubjectCollection(collectionId, skip);
+  const collectionData = await api.doubanAPI.getSubjectCollectionItems(collectionId, skip);
   if (!collectionData) {
     return c.notFound();
   }

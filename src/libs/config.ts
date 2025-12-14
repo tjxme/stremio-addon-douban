@@ -1,9 +1,9 @@
 import { brotliCompressSync, brotliDecompressSync, constants } from "node:zlib";
 import { z } from "zod";
-import { collectionConfigs } from "./constants";
+import { DEFAULT_COLLECTION_IDS } from "./constants";
 
 export const configSchema = z.object({
-  catalogIds: z.array(z.string()).default(collectionConfigs.map((c) => c.id)),
+  catalogIds: z.array(z.string()).default(DEFAULT_COLLECTION_IDS),
 });
 
 export type Config = z.infer<typeof configSchema>;

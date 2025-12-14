@@ -10,7 +10,7 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Switch } from "@/components/ui/switch";
-import { collectionConfigs } from "@/libs/constants";
+import { COLLECTION_CONFIGS } from "@/libs/constants";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "./ui/input-group";
@@ -21,8 +21,8 @@ export interface ConfigureProps {
 }
 
 // 按类型分组
-const movieConfigs = collectionConfigs.filter((c) => c.type === "movie");
-const seriesConfigs = collectionConfigs.filter((c) => c.type === "series");
+const movieConfigs = COLLECTION_CONFIGS.filter((c) => c.type === "movie");
+const seriesConfigs = COLLECTION_CONFIGS.filter((c) => c.type === "series");
 
 export const Configure: React.FC<ConfigureProps> = ({ initialSelectedIds, manifestUrl }) => {
   const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);
@@ -44,7 +44,7 @@ export const Configure: React.FC<ConfigureProps> = ({ initialSelectedIds, manife
     setSelectedIds((prev) => (checked ? [...prev, id] : prev.filter((i) => i !== id)));
   };
 
-  const renderItems = (items: typeof collectionConfigs) =>
+  const renderItems = (items: typeof COLLECTION_CONFIGS) =>
     items.map((item, index, array) => (
       <Fragment key={item.id}>
         <Item size="sm" asChild>

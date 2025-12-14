@@ -1,5 +1,26 @@
 import { z } from "zod/v4";
 
+export const doubanSubjectCollectionInfoSchema = z.object({
+  category_tabs: z
+    .array(
+      z.object({
+        category: z.string(),
+        items: z
+          .array(
+            z.object({
+              current: z.boolean(),
+              id: z.string(),
+              name: z.string(),
+            }),
+          )
+          .nullish(),
+      }),
+    )
+    .nullish(),
+});
+
+export type DoubanSubjectCollectionInfo = z.output<typeof doubanSubjectCollectionInfoSchema>;
+
 const doubanSubjectCollectionItemSchema = z
   .object({
     id: z.coerce.number(),
