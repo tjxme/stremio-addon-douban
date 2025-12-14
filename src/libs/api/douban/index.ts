@@ -53,11 +53,9 @@ export class DoubanAPI extends BaseAPI {
   }
 
   async getSubjectCollectionCategory(collectionId: string) {
+    type Category = NonNullable<DoubanSubjectCollectionInfo["category_tabs"]>[number];
     const generateCacheKey = (cid: string) => `subject_collection_category:${cid}`;
-    const cached = await this.context.env.KV.get<NonNullable<DoubanSubjectCollectionInfo["category_tabs"]>[number]>(
-      generateCacheKey(collectionId),
-      "json",
-    );
+    const cached = await this.context.env.KV.get<Category>(generateCacheKey(collectionId), "json");
     if (cached) {
       console.log("⚡️ KV Cache Hit", collectionId);
       return cached;
@@ -71,24 +69,22 @@ export class DoubanAPI extends BaseAPI {
       return null;
     }
 
-    // this.context.executionCtx.waitUntil(
-    //   Promise.all(
-    //     tabs.map((tab) => {
-    //       const cid = tab.items?.[0].id;
-    //       if (!cid) {
-    //         return null;
-    //       }
-    //       return this.context.env.KV.put(generateCacheKey(cid), JSON.stringify(tab), {
-    //         expiration: 1000 * SECONDS_PER_WEEK,
-    //       });
-    //     }),
-    //   ),
-    // );
-
-    const category = tabs.find((tab) => tab.items?.find((item) => item.current));
-    if (!category) {
-      return null;
+    let category: Category | null = null;
+    for (const tab of tabs) {
+      const cid = tab.items?.[0].id;
+      if (cid) {
+        this.context.executionCtx.waitUntil(
+          this.context.env.KV.put(generateCacheKey(cid), JSON.stringify(tab), {
+            expiration: 1000 * SECONDS_PER_WEEK,
+          }),
+        );
+      }
+      if (tab.items?.find((item) => item.current)) {
+        category = tab;
+        break;
+      }
     }
+
     return category;
   }
 
