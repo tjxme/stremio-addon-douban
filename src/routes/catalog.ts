@@ -19,7 +19,6 @@ catalogRoute.get("*", async (c) => {
   }
 
   const config = decodeConfig(params.config);
-  console.log("config", config);
 
   const getExtra = getExtraFactory(c, params.extra);
 
