@@ -7,6 +7,7 @@ import { SECONDS_PER_DAY, SECONDS_PER_HOUR, SECONDS_PER_WEEK } from "../../const
 import { BaseAPI, CacheType } from "../base";
 import {
   type DoubanSubjectCollectionCategory,
+  doubanModulesSchema,
   doubanSubjectCollectionCategorySchema,
   doubanSubjectCollectionInfoSchema,
   doubanSubjectCollectionSchema,
@@ -168,5 +169,17 @@ export class DoubanAPI extends BaseAPI {
       );
     } catch (error) {}
     return doubanId;
+  }
+
+  async getModules(type: "movie" | "tv") {
+    const resp = await this.request({
+      url: `/${type}/modules`,
+      cache: {
+        type: CacheType.KV | CacheType.LOCAL,
+        key: `douban_${type}_modules`,
+        ttl: SECONDS_PER_DAY,
+      },
+    });
+    return doubanModulesSchema.parse(resp);
   }
 }

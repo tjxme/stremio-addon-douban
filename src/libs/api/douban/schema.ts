@@ -145,3 +145,27 @@ export const tmdbSearchResultSchema = z.object({
   ),
   total_results: z.number().nullish(),
 });
+
+export const doubanModulesSchema = z.object({
+  modules: z.array(
+    z
+      .object({
+        module_name: z.union([
+          z.literal("tv_selected_chart_collections"),
+          z.literal("movie_selected_chart_collections"),
+        ]),
+        data: z.object({
+          selected_collections: z.array(
+            z.object({
+              id: z.string(),
+              title: z.string(),
+              is_merged_cover: z.boolean(),
+              is_official: z.boolean(),
+            }),
+          ),
+        }),
+      })
+      .nullish()
+      .catch(() => null),
+  ),
+});

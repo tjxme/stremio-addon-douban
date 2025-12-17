@@ -36,7 +36,8 @@ configureRoute.post("/", async (c) => {
   const formData = await c.req.formData();
   const catalogIds = formData.get("catalogIds")?.toString().split(",").filter(Boolean) ?? [];
   const imageProxy = formData.get("imageProxy")?.toString() ?? "none";
-  const config = encodeConfig({ catalogIds, imageProxy });
+  const dynamicCollections = formData.get("dynamicCollections")?.toString() === "on";
+  const config = encodeConfig({ catalogIds, imageProxy, dynamicCollections });
   setCookie(c, "config", config);
   return c.redirect(`/${config}/configure`);
 });

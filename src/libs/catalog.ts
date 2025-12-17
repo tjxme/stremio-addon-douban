@@ -1,17 +1,52 @@
 import type { ManifestCatalog } from "@stremio-addon/sdk";
 import pLimit from "p-limit";
 import { api } from "./api";
-import { collectionConfigMap, DEFAULT_COLLECTION_IDS } from "./catalog-shared";
+import { COLLECTION_CONFIGS, DEFAULT_COLLECTION_IDS } from "./catalog-shared";
+import type { Config } from "./config";
 
 export * from "./catalog-shared";
 
 const limit = pLimit(5);
 
-export const getCatalogs = (catalogIds = DEFAULT_COLLECTION_IDS) => {
+export const getCatalogs = async (config: Config) => {
   const catalogsPromises: Promise<ManifestCatalog>[] = [];
 
-  for (const catalogId of catalogIds) {
-    const item = collectionConfigMap.get(catalogId);
+  const catalogIdsSet = new Set(config.catalogIds || DEFAULT_COLLECTION_IDS);
+  const catalogMap = new Map(COLLECTION_CONFIGS.map((item) => [item.id, item]));
+
+  if (config.dynamicCollections) {
+    const categories = [
+      { type: "movie", moduleName: "movie_selected_chart_collections", catalogType: "movie" },
+      { type: "tv", moduleName: "tv_selected_chart_collections", catalogType: "series" },
+    ] as const;
+
+    await Promise.allSettled(
+      categories.map(async ({ type, moduleName, catalogType }) => {
+        try {
+          const resp = await api.doubanAPI.getModules(type);
+          const module = resp.modules.find((m) => m?.module_name === moduleName);
+
+          for (const collection of module?.data.selected_collections ?? []) {
+            if (!collection.is_merged_cover) {
+              continue;
+            }
+            catalogMap.set(collection.id, {
+              id: collection.id,
+              name: collection.title,
+              type: catalogType,
+              hasGenre: false,
+            });
+            catalogIdsSet.add(collection.id);
+          }
+        } catch (error) {
+          console.error(`Failed to fetch dynamic collections for ${type}:`, error);
+        }
+      }),
+    );
+  }
+
+  for (const catalogId of catalogIdsSet) {
+    const item = catalogMap.get(catalogId);
     if (!item) {
       continue;
     }
@@ -33,5 +68,6 @@ export const getCatalogs = (catalogIds = DEFAULT_COLLECTION_IDS) => {
       }),
     );
   }
+
   return Promise.all(catalogsPromises);
 };

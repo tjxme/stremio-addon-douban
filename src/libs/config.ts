@@ -5,6 +5,7 @@ import { DEFAULT_COLLECTION_IDS } from "./catalog";
 export const configSchema = z.object({
   catalogIds: z.array(z.string()).default(DEFAULT_COLLECTION_IDS),
   imageProxy: z.enum(["none", "weserv"]).default("none").catch("none"),
+  dynamicCollections: z.boolean().default(false).catch(false),
 });
 
 export type Config = z.infer<typeof configSchema>;

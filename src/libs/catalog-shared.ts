@@ -78,8 +78,6 @@ export const COLLECTION_CONFIGS: Array<ManifestCatalog & { hasGenre?: boolean }>
   { id: "2014_tv_14", name: "豆瓣 2014 评分最高剧集", type: "series", hasGenre: true },
 ];
 
-export const collectionConfigMap = new Map(COLLECTION_CONFIGS.map((item) => [item.id, item]));
-
 export const ALL_COLLECTION_IDS = COLLECTION_CONFIGS.map((item) => item.id);
 export const DEFAULT_COLLECTION_IDS = [
   "movie_hot_gaia",

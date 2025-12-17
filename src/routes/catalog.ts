@@ -1,7 +1,7 @@
 import type { AddonBuilder, MetaPreview } from "@stremio-addon/sdk";
 import { type Env, Hono } from "hono";
 import { api } from "@/libs/api";
-import { collectionConfigMap, generateId } from "@/libs/catalog";
+import { generateId } from "@/libs/catalog";
 import { decodeConfig } from "@/libs/config";
 import { SECONDS_PER_DAY, SECONDS_PER_WEEK } from "@/libs/constants";
 import { getExtraFactory, matchResourceRoute } from "@/libs/router";
@@ -14,7 +14,7 @@ export const catalogRoute = new Hono<Env>();
 catalogRoute.get("*", async (c) => {
   const [matched, params] = matchResourceRoute(c.req.path);
 
-  if (!matched || !collectionConfigMap.has(params.id)) {
+  if (!matched) {
     return c.notFound();
   }
 

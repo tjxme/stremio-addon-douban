@@ -27,9 +27,8 @@ export interface ConfigureProps {
 const movieConfigs = COLLECTION_CONFIGS.filter((c) => c.type === "movie");
 const seriesConfigs = COLLECTION_CONFIGS.filter((c) => c.type === "series");
 
-export const Configure: FC<ConfigureProps> = ({ config, manifestUrl }) => {
-  const [selectedIds, setSelectedIds] = useState<string[]>(config.catalogIds);
-  const [imageProxy, setImageProxy] = useState(config.imageProxy);
+export const Configure: FC<ConfigureProps> = ({ config: initialConfig, manifestUrl }) => {
+  const [config, setConfig] = useState(initialConfig);
   const [isCopied, setIsCopied] = useState(false);
 
   const copyToClipboard = useCallback(async (text: string) => {
@@ -42,10 +41,13 @@ export const Configure: FC<ConfigureProps> = ({ config, manifestUrl }) => {
     }
   }, []);
 
-  const isNoneSelected = selectedIds.length === 0;
+  const isNoneSelected = config.catalogIds.length === 0;
 
   const toggleItem = (id: string, checked: boolean) => {
-    setSelectedIds((prev) => (checked ? [...prev, id] : prev.filter((i) => i !== id)));
+    setConfig((prev) => ({
+      ...prev,
+      catalogIds: checked ? [...prev.catalogIds, id] : prev.catalogIds.filter((i) => i !== id),
+    }));
   };
 
   const renderItems = (items: typeof COLLECTION_CONFIGS) =>
@@ -59,7 +61,7 @@ export const Configure: FC<ConfigureProps> = ({ config, manifestUrl }) => {
             </ItemContent>
             <ItemActions>
               <Switch
-                checked={selectedIds.includes(item.id)}
+                checked={config.catalogIds.includes(item.id)}
                 onCheckedChange={(checked) => toggleItem(item.id, checked)}
               />
             </ItemActions>
@@ -78,15 +80,33 @@ export const Configure: FC<ConfigureProps> = ({ config, manifestUrl }) => {
             <ItemGroup className="rounded-lg border">
               <Item size="sm">
                 <ItemContent>
+                  <ItemTitle>启用动态集合</ItemTitle>
+                  <ItemDescription>豆瓣会不定期更新一些集合，启用后会自动添加</ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  <Switch
+                    name="dynamicCollections"
+                    checked={config.dynamicCollections}
+                    onCheckedChange={(checked) => setConfig((prev) => ({ ...prev, dynamicCollections: checked }))}
+                  />
+                </ItemActions>
+              </Item>
+
+              <ItemSeparator />
+
+              <Item size="sm">
+                <ItemContent>
                   <ItemTitle>图片代理</ItemTitle>
                   <ItemDescription>选择图片代理服务</ItemDescription>
                 </ItemContent>
                 <ItemActions>
                   <NativeSelect
                     name="imageProxy"
-                    value={imageProxy}
+                    value={config.imageProxy}
                     size="sm"
-                    onChange={(e) => setImageProxy(e.target.value as Config["imageProxy"])}
+                    onChange={(e) =>
+                      setConfig((prev) => ({ ...prev, imageProxy: e.target.value as Config["imageProxy"] }))
+                    }
                   >
                     <NativeSelectOption value="none">不使用代理</NativeSelectOption>
                     <NativeSelectOption value="weserv">Weserv</NativeSelectOption>
@@ -102,7 +122,7 @@ export const Configure: FC<ConfigureProps> = ({ config, manifestUrl }) => {
             icon={<Film className="size-4 text-muted-foreground" />}
             extra={
               <Badge variant="outline" className="ml-auto">
-                {movieConfigs.filter((c) => selectedIds.includes(c.id)).length}/{movieConfigs.length}
+                {movieConfigs.filter((c) => config.catalogIds.includes(c.id)).length}/{movieConfigs.length}
               </Badge>
             }
           >
@@ -115,7 +135,7 @@ export const Configure: FC<ConfigureProps> = ({ config, manifestUrl }) => {
             icon={<Tv className="size-4 text-muted-foreground" />}
             extra={
               <Badge variant="outline" className="ml-auto">
-                {seriesConfigs.filter((c) => selectedIds.includes(c.id)).length}/{seriesConfigs.length}
+                {seriesConfigs.filter((c) => config.catalogIds.includes(c.id)).length}/{seriesConfigs.length}
               </Badge>
             }
           >
@@ -127,7 +147,7 @@ export const Configure: FC<ConfigureProps> = ({ config, manifestUrl }) => {
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-linear-to-t from-background to-transparent" />
       </div>
 
-      <input type="hidden" name="catalogIds" value={selectedIds.join(",")} />
+      <input type="hidden" name="catalogIds" value={config.catalogIds.join(",")} />
 
       {/* 底部：固定操作区 */}
       <div className="shrink-0 space-y-3 p-4">
