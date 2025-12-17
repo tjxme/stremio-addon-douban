@@ -105,7 +105,8 @@ export class BaseAPI {
     const { type = CacheType.LOCAL, ttl = 0 } = options ?? {};
     if ((type & CacheType.LOCAL) === CacheType.LOCAL) {
       this.setLocalCache(key, value, ttl);
-    } else if ((type & CacheType.KV) === CacheType.KV) {
+    }
+    if ((type & CacheType.KV) === CacheType.KV) {
       this.setKVCache(key, value, ttl);
     }
   }
