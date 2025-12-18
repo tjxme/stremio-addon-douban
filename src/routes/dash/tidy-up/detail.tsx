@@ -60,7 +60,7 @@ tidyUpDetailRoute.get("/:doubanId", async (c) => {
   const tmdbResults = await api.tmdbAPI
     .search(subject.type, {
       query: subject.original_title || subject.title,
-      year: subject.year ?? undefined,
+      // year: subject.year ?? undefined,
     })
     .catch(() => null);
 
