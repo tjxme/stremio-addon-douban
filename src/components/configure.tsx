@@ -20,7 +20,6 @@ import {
   isYearlyRankingId,
   MOVIE_YEARLY_RANKING_ID,
   TV_YEARLY_RANKING_ID,
-  YEARLY_RANKINGS,
 } from "@/libs/catalog-shared";
 import type { Config } from "@/libs/config";
 import type { ConfigureRoute } from "@/routes/configure";
@@ -30,6 +29,7 @@ import { Button } from "./ui/button";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "./ui/input-group";
 import { NativeSelect, NativeSelectOption } from "./ui/native-select";
 import { Spinner } from "./ui/spinner";
+import { YearlyRankingDrawer } from "./yearly-ranking-drawer";
 
 export interface ConfigureProps {
   config: Config;
@@ -66,41 +66,48 @@ export const Configure: FC<ConfigureProps> = ({ config: initialConfig, manifestU
   };
 
   const getConfigsByType = useCallback(
-    (type: "movie" | "series", yearlyRankingId: string) => {
-      const configs: Array<Pick<(typeof COLLECTION_CONFIGS)[number], "id" | "name">> = COLLECTION_CONFIGS.filter(
-        (c) => c.type === type,
-      );
-      if (!config.catalogIds.includes(yearlyRankingId)) {
-        configs.push(...(YEARLY_RANKINGS[yearlyRankingId] ?? []));
-      }
-      return configs;
-    },
-    [config.catalogIds],
+    (type: "movie" | "series") => COLLECTION_CONFIGS.filter((c) => c.type === type),
+    [],
   );
 
-  const movieConfigs = useMemo(() => getConfigsByType("movie", MOVIE_YEARLY_RANKING_ID), [getConfigsByType]);
-  const seriesConfigs = useMemo(() => getConfigsByType("series", TV_YEARLY_RANKING_ID), [getConfigsByType]);
+  const movieConfigs = useMemo(() => getConfigsByType("movie"), [getConfigsByType]);
+  const seriesConfigs = useMemo(() => getConfigsByType("series"), [getConfigsByType]);
 
-  const renderItems = (items: Array<Pick<(typeof COLLECTION_CONFIGS)[number], "id" | "name">>) =>
-    items.map((item, index, array) => (
-      <Fragment key={item.id}>
-        <Item size="sm" asChild>
-          <label>
-            <ItemContent>
-              <ItemTitle>{item.name}</ItemTitle>
-              {isYearlyRankingId(item.id) && <ItemDescription>动态获取最新的年度榜单</ItemDescription>}
-            </ItemContent>
-            <ItemActions>
-              <Switch
-                checked={config.catalogIds.includes(item.id)}
-                onCheckedChange={(checked) => toggleItem(item.id, checked)}
-              />
-            </ItemActions>
-          </label>
-        </Item>
-        {index !== array.length - 1 && <ItemSeparator />}
-      </Fragment>
-    ));
+  const renderItems = (items: Array<Pick<(typeof COLLECTION_CONFIGS)[number], "id" | "name">>) => (
+    <>
+      {items.map((item, index, array) => {
+        if (isYearlyRankingId(item.id)) {
+          return (
+            <YearlyRankingDrawer
+              yearlyRankingId={item.id}
+              title={item.name}
+              catalogIds={config.catalogIds}
+              onToggle={toggleItem}
+            />
+          );
+        }
+        return (
+          <Fragment key={item.id}>
+            <Item size="sm" asChild>
+              <label>
+                <ItemContent>
+                  <ItemTitle>{item.name}</ItemTitle>
+                  {isYearlyRankingId(item.id) && <ItemDescription>动态获取最新的年度榜单</ItemDescription>}
+                </ItemContent>
+                <ItemActions>
+                  <Switch
+                    checked={config.catalogIds.includes(item.id)}
+                    onCheckedChange={(checked) => toggleItem(item.id, checked)}
+                  />
+                </ItemActions>
+              </label>
+            </Item>
+            {index !== array.length - 1 && <ItemSeparator />}
+          </Fragment>
+        );
+      })}
+    </>
+  );
 
   const [actionState, formAction, isPending] = useActionState(
     async () => {
