@@ -239,6 +239,7 @@ export const Configure: FC<ConfigureProps> = ({ config: initialConfig, manifestU
                           </ItemDescription>
                           <Input
                             className="mt-2"
+                            type="password"
                             placeholder="请输入你的 API 密钥"
                             value={config.fanart.apiKey ?? ""}
                             onChange={(e) =>
