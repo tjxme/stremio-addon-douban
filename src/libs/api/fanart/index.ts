@@ -75,7 +75,7 @@ export class FanartAPI extends BaseAPI {
         return {
           poster: resp.movieposter?.[0]?.url,
           background: resp.moviebackground?.[0]?.url,
-          logo: resp.movielogo?.[0]?.url,
+          logo: resp.hdmovielogo?.[0]?.url || resp.movielogo?.[0]?.url,
         };
       } else {
         if (!isNumeric(id)) {
