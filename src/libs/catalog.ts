@@ -1,15 +1,8 @@
 import type { ManifestCatalog } from "@stremio-addon/sdk";
 import pLimit from "p-limit";
 import { api } from "./api";
-import {
-  COLLECTION_CONFIGS,
-  DEFAULT_COLLECTION_IDS,
-  getLatestYearlyRanking,
-  isYearlyRankingId,
-} from "./catalog-shared";
+import { COLLECTION_CONFIGS, DEFAULT_COLLECTION_IDS, getLatestYearlyRanking, isYearlyRankingId } from "./collections";
 import type { Config } from "./config";
-
-export * from "./catalog-shared";
 
 export const getCatalogs = async (config: Config) => {
   const limit = pLimit(5);

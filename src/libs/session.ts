@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import type { Context, Env, MiddlewareHandler } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { sign, verify } from "hono/jwt";
-import { getDrizzle, type User, type UserConfig, userConfigs, users } from "@/db";
+import { getDrizzle, type User, users } from "@/db";
 
 const JWT_COOKIE_NAME = "token";
 const JWT_TTL = 60 * 60 * 24 * 30; // 30 天
@@ -80,53 +80,6 @@ export async function getCurrentUser(c: Context<Env>): Promise<User | null> {
   const user = await db.query.users.findFirst({ where: eq(users.id, payload.sub) });
 
   return user ?? null;
-}
-
-/**
- * 获取用户配置
- */
-export async function getUserConfig(c: Context<Env>, userId: string): Promise<UserConfig | null> {
-  const db = getDrizzle(c.env);
-  const config = await db.query.userConfigs.findFirst({ where: eq(userConfigs.userId, userId) });
-
-  return config ?? null;
-}
-
-/**
- * 保存用户配置
- */
-export async function saveUserConfig(
-  c: Context<Env>,
-  userId: string,
-  config: {
-    catalogIds: string[];
-    imageProxy: string;
-    dynamicCollections: boolean;
-    fanart?: { enabled: boolean; apiKey?: string };
-  },
-): Promise<void> {
-  const db = getDrizzle(c.env);
-
-  await db
-    .insert(userConfigs)
-    .values({
-      userId,
-      catalogIds: config.catalogIds,
-      imageProxy: config.imageProxy,
-      dynamicCollections: config.dynamicCollections,
-      fanartEnabled: config.fanart?.enabled ?? false,
-      fanartApiKey: config.fanart?.apiKey,
-    })
-    .onConflictDoUpdate({
-      target: userConfigs.userId,
-      set: {
-        catalogIds: config.catalogIds,
-        imageProxy: config.imageProxy,
-        dynamicCollections: config.dynamicCollections,
-        fanartEnabled: config.fanart?.enabled ?? false,
-        fanartApiKey: config.fanart?.apiKey,
-      },
-    });
 }
 
 // 扩展 Hono 的 Context 类型

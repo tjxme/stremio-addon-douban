@@ -6,9 +6,8 @@ import { Github, Heart } from "lucide-react";
 import { Link, Script, ViteClient } from "vite-ssr-components/react";
 import pkg from "@/../package.json" with { type: "json" };
 import { Configure, type ConfigureProps } from "@/components/configure";
-import { ALL_COLLECTION_IDS, DEFAULT_COLLECTION_IDS } from "@/libs/catalog";
-import { configSchema, decodeConfig, encodeConfig, getConfig, isUserId } from "@/libs/config";
-import { saveUserConfig } from "@/libs/session";
+import { COLLECTION_CONFIGS, DEFAULT_COLLECTION_IDS } from "@/libs/collections";
+import { configSchema, decodeConfig, encodeConfig, getConfig, isUserId, saveUserConfig } from "@/libs/config";
 
 export const configureRoute = new Hono<Env>().put("/", zValidator("json", configSchema), async (c) => {
   const config = c.req.valid("json");
@@ -97,10 +96,9 @@ configureRoute.get("/", async (c) => {
   // 使用统一的 getConfig 获取配置
   const rawConfig = await getConfig(c.env, configSource);
 
-  const initialSelectedIds = rawConfig.catalogIds || DEFAULT_COLLECTION_IDS;
   const config = {
     ...rawConfig,
-    catalogIds: ALL_COLLECTION_IDS.filter((id) => initialSelectedIds.includes(id)),
+    catalogIds: rawConfig.catalogIds || DEFAULT_COLLECTION_IDS,
   };
 
   const configureProps: ConfigureProps = {

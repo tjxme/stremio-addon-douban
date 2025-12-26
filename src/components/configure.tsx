@@ -15,7 +15,7 @@ import {
 import { Toaster } from "@/components/ui/sonner";
 import { Switch } from "@/components/ui/switch";
 import type { User } from "@/db";
-import { COLLECTION_CONFIGS, isYearlyRankingId } from "@/libs/catalog-shared";
+import { COLLECTION_CONFIGS, isYearlyRankingId } from "@/libs/collections";
 import type { Config } from "@/libs/config";
 import type { ConfigureRoute } from "@/routes/configure";
 import { SettingSection } from "./setting-section";
@@ -166,24 +166,8 @@ export const Configure: FC<ConfigureProps> = ({ config: initialConfig, manifestU
                 <ItemGroup className="rounded-lg border">
                   <Item size="sm">
                     <ItemContent>
-                      <ItemTitle>启用动态集合</ItemTitle>
-                      <ItemDescription>豆瓣会不定期更新一些集合，启用后会自动添加</ItemDescription>
-                    </ItemContent>
-                    <ItemActions>
-                      <Switch
-                        name="dynamicCollections"
-                        checked={config.dynamicCollections}
-                        onCheckedChange={(checked) => setConfig((prev) => ({ ...prev, dynamicCollections: checked }))}
-                      />
-                    </ItemActions>
-                  </Item>
-
-                  <ItemSeparator />
-
-                  <Item size="sm">
-                    <ItemContent>
                       <ItemTitle>选择图片代理服务</ItemTitle>
-                      <ItemDescription>针对 Stremio 用户优化，Forward 用户不建议开启</ItemDescription>
+                      <ItemDescription>针对 Stremio 用户优化，Forward 等客户端用户不建议开启</ItemDescription>
                     </ItemContent>
                     <ItemActions>
                       <NativeSelect
@@ -209,7 +193,7 @@ export const Configure: FC<ConfigureProps> = ({ config: initialConfig, manifestU
                       </ItemTitle>
                       <ItemDescription>
                         {user?.hasStarred
-                          ? "使用 fanart.tv 提供高清海报、背景和 Logo"
+                          ? "使用 fanart.tv 提供高清海报、背景和 Logo，若 Fanart 未匹配到图片，则降级使用豆瓣"
                           : "使用 GitHub 登录并星标本项目可开启此功能"}
                       </ItemDescription>
                     </ItemContent>
@@ -231,8 +215,7 @@ export const Configure: FC<ConfigureProps> = ({ config: initialConfig, manifestU
                         <ItemContent className="flex-1">
                           <ItemTitle>Fanart API 密钥（可选）</ItemTitle>
                           <ItemDescription>
-                            如果未提供个人 API 密钥，Fanart 将仅返回 7 天前过审的图片。如果提供个人 API 密钥，Fanart
-                            将返回 48小时前过审的图片。如果您是 VIP 会员，Fanart 将返回 10 分钟前过审的图片。
+                            未提供密钥仅显示 7 天前过审图片，提供后缩短至 48 小时，VIP 为 10 分钟。
                             <a href="https://wiki.fanart.tv/General/personal%20api/" target="_blank" rel="noreferrer">
                               了解更多
                             </a>
@@ -261,6 +244,21 @@ export const Configure: FC<ConfigureProps> = ({ config: initialConfig, manifestU
                       </Item>
                     </>
                   )}
+
+                  <ItemSeparator />
+                  <Item size="sm">
+                    <ItemContent>
+                      <ItemTitle>启用动态集合</ItemTitle>
+                      <ItemDescription>豆瓣会不定期更新一些集合，启用后会自动添加</ItemDescription>
+                    </ItemContent>
+                    <ItemActions>
+                      <Switch
+                        name="dynamicCollections"
+                        checked={config.dynamicCollections}
+                        onCheckedChange={(checked) => setConfig((prev) => ({ ...prev, dynamicCollections: checked }))}
+                      />
+                    </ItemActions>
+                  </Item>
                 </ItemGroup>
               </SettingSection>
 

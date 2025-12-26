@@ -1,7 +1,9 @@
 import { brotliCompressSync, brotliDecompressSync, constants } from "node:zlib";
+import { eq } from "drizzle-orm";
+import type { Context, Env } from "hono";
 import { z } from "zod/v4";
-import { getDrizzle } from "@/db";
-import { DEFAULT_COLLECTION_IDS } from "./catalog";
+import { getDrizzle, type UserConfig, userConfigs } from "@/db";
+import { DEFAULT_COLLECTION_IDS } from "./collections";
 
 export const configSchema = z.object({
   catalogIds: z.array(z.string()).default(DEFAULT_COLLECTION_IDS),
@@ -76,3 +78,50 @@ export const getConfig = async (env: CloudflareBindings, id?: string): Promise<C
   }
   return decodeConfig(id);
 };
+
+/**
+ * 获取用户配置
+ */
+export async function getUserConfig(c: Context<Env>, userId: string): Promise<UserConfig | null> {
+  const db = getDrizzle(c.env);
+  const config = await db.query.userConfigs.findFirst({ where: eq(userConfigs.userId, userId) });
+
+  return config ?? null;
+}
+
+/**
+ * 保存用户配置
+ */
+export async function saveUserConfig(
+  c: Context<Env>,
+  userId: string,
+  config: {
+    catalogIds: string[];
+    imageProxy: string;
+    dynamicCollections: boolean;
+    fanart?: { enabled: boolean; apiKey?: string };
+  },
+): Promise<void> {
+  const db = getDrizzle(c.env);
+
+  await db
+    .insert(userConfigs)
+    .values({
+      userId,
+      catalogIds: config.catalogIds,
+      imageProxy: config.imageProxy,
+      dynamicCollections: config.dynamicCollections,
+      fanartEnabled: config.fanart?.enabled ?? false,
+      fanartApiKey: config.fanart?.apiKey,
+    })
+    .onConflictDoUpdate({
+      target: userConfigs.userId,
+      set: {
+        catalogIds: config.catalogIds,
+        imageProxy: config.imageProxy,
+        dynamicCollections: config.dynamicCollections,
+        fanartEnabled: config.fanart?.enabled ?? false,
+        fanartApiKey: config.fanart?.apiKey,
+      },
+    });
+}

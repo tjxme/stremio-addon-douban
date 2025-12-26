@@ -2,7 +2,7 @@ import type { AddonBuilder, MetaPreview } from "@stremio-addon/sdk";
 import { type Env, Hono } from "hono";
 import { api } from "@/libs/api";
 import { FanartAPI } from "@/libs/api/fanart";
-import { getLatestYearlyRanking, isYearlyRankingId } from "@/libs/catalog-shared";
+import { getLatestYearlyRanking, isYearlyRankingId } from "@/libs/collections";
 import { getConfig } from "@/libs/config";
 import { SECONDS_PER_DAY, SECONDS_PER_WEEK } from "@/libs/constants";
 import { getExtraFactory, matchResourceRoute } from "@/libs/router";

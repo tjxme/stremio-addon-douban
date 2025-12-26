@@ -18,7 +18,7 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Switch } from "@/components/ui/switch";
-import { YEARLY_RANKINGS, type YearlyRankingItem } from "@/libs/catalog-shared";
+import { YEARLY_RANKINGS, type YearlyRankingItem } from "@/libs/collections";
 
 export interface YearlyRankingDrawerProps {
   /** 年度榜单的虚拟 ID，如 MOVIE_YEARLY_RANKING_ID */
