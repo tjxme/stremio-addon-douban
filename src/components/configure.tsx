@@ -21,7 +21,7 @@ import type { ConfigureRoute } from "@/routes/configure";
 import { SettingSection } from "./setting-section";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
+
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "./ui/input-group";
 import { NativeSelect, NativeSelectOption } from "./ui/native-select";
 import { Spinner } from "./ui/spinner";
@@ -237,18 +237,26 @@ export const Configure: FC<ConfigureProps> = ({ config: initialConfig, manifestU
                               了解更多
                             </a>
                           </ItemDescription>
-                          <Input
-                            className="mt-2"
-                            type="password"
-                            placeholder="请输入你的 API 密钥"
-                            value={config.fanart.apiKey ?? ""}
-                            onChange={(e) =>
-                              setConfig((prev) => ({
-                                ...prev,
-                                fanart: { ...prev.fanart, apiKey: e.target.value || undefined },
-                              }))
-                            }
-                          />
+                          <InputGroup className="mt-2">
+                            <InputGroupInput
+                              type="password"
+                              placeholder="请输入你的 API 密钥"
+                              value={config.fanart.apiKey ?? ""}
+                              onChange={(e) =>
+                                setConfig((prev) => ({
+                                  ...prev,
+                                  fanart: { ...prev.fanart, apiKey: e.target.value || undefined },
+                                }))
+                              }
+                            />
+                            <InputGroupAddon align="inline-end">
+                              <InputGroupButton asChild>
+                                <a href="https://fanart.tv/get-an-api-key/" target="_blank" rel="noreferrer">
+                                  获取 API 密钥
+                                </a>
+                              </InputGroupButton>
+                            </InputGroupAddon>
+                          </InputGroup>
                         </ItemContent>
                       </Item>
                     </>
