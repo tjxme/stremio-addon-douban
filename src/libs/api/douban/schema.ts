@@ -55,6 +55,7 @@ const doubanSubjectCollectionItemSchema = z
       })
       .nullish(),
     url: z.string().nullish(),
+    release_date: z.string().nullish(),
   })
   .transform((v) => ({
     ...v,
@@ -138,33 +139,6 @@ export const doubanSubjectDetailSchema = z.object({
     )
     .nullish()
     .transform((v) => (v ? compact(v) : [])),
-});
-
-export const tmdbSearchResultSchema = z.object({
-  results: z.array(
-    z.union([
-      z.object({
-        id: z.coerce.number(),
-        title: z.string(),
-        original_title: z.string().nullish(),
-        release_date: z.string().nullish(),
-      }),
-      z
-        .object({
-          id: z.coerce.number(),
-          name: z.string(),
-          original_name: z.string().nullish(),
-          first_air_date: z.string().nullish(),
-        })
-        .transform((v) => ({
-          id: v.id,
-          title: v.name,
-          original_title: v.original_name,
-          release_date: v.first_air_date,
-        })),
-    ]),
-  ),
-  total_results: z.number().nullish(),
 });
 
 export const doubanModulesSchema = z.object({
