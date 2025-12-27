@@ -62,6 +62,9 @@ export class TmdbAPI extends BaseAPI {
   async getSubjectImages(type: "movie" | "tv", id: number) {
     const resp = await this.request({
       url: `/${type}/${id}/images`,
+      params: {
+        include_image_language: ["zh-CN", "zh-HK", "zh-TW", "en-US", "en-GB", "null"].join(","),
+      },
       cache: {
         key: `tmdb:${type}:${id}:images`,
         ttl: SECONDS_PER_WEEK,
