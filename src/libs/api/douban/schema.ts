@@ -64,6 +64,8 @@ const doubanSubjectCollectionItemSchema = z
     description: v.description || v.comment,
   }));
 
+export type DoubanSubjectCollectionItem = z.output<typeof doubanSubjectCollectionItemSchema>;
+
 export const doubanSubjectCollectionSchema = z.object({
   subject_collection_items: z
     .array(

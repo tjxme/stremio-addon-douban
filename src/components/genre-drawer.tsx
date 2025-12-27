@@ -50,7 +50,7 @@ export const GenreDrawer: FC<GenreDrawerProps> = ({ title, items, catalogIds, on
           </ItemActions>
         </Item>
       </DrawerTrigger>
-      <DrawerContent className="h-3/4">
+      <DrawerContent className="h-4/5">
         <DrawerHeader>
           <DrawerTitle>{title}</DrawerTitle>
           <DrawerDescription>选择要显示的类型榜单</DrawerDescription>

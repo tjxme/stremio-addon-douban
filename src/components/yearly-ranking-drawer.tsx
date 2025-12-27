@@ -22,7 +22,7 @@ import { YEARLY_RANKINGS, type YearlyRankingItem } from "@/libs/collections";
 
 export interface YearlyRankingDrawerProps {
   /** 年度榜单的虚拟 ID，如 MOVIE_YEARLY_RANKING_ID */
-  yearlyRankingId: string;
+  yearlyRankingId: keyof typeof YEARLY_RANKINGS;
   /** 显示名称 */
   title: string;
   /** 当前选中的 catalogIds */
@@ -80,7 +80,7 @@ export const YearlyRankingDrawer: FC<YearlyRankingDrawerProps> = ({ yearlyRankin
           </ItemActions>
         </Item>
       </DrawerTrigger>
-      <DrawerContent className="h-3/4">
+      <DrawerContent className="h-4/5">
         <DrawerHeader>
           <DrawerTitle>{title}</DrawerTitle>
           <DrawerDescription>选择自动获取最新榜单，或手动选择特定年份</DrawerDescription>

@@ -5,16 +5,39 @@ import { z } from "zod/v4";
 import { getDrizzle, type UserConfig, userConfigs } from "@/db";
 import { DEFAULT_COLLECTION_IDS } from "./collections";
 
+const imageProviderDoubanSchema = z.object({
+  provider: z.literal("douban"),
+  extra: z.object({
+    proxy: z.enum(["none", "weserv"]).default("none").catch("none"),
+  }),
+});
+
+const imageProviderFanartSchema = z.object({
+  provider: z.literal("fanart"),
+  extra: z.object({
+    apiKey: z.string().optional(),
+  }),
+});
+
+const imageProviderTmdbSchema = z.object({
+  provider: z.literal("tmdb"),
+  extra: z.object({
+    apiKey: z.string().optional(),
+  }),
+});
+
+const imageProviderSchema = z.union([imageProviderDoubanSchema, imageProviderFanartSchema, imageProviderTmdbSchema]);
+
+type ImageProviderBase = z.output<typeof imageProviderSchema>;
+export type ImageProvider<T extends ImageProviderBase["provider"] = ImageProviderBase["provider"]> = Extract<
+  ImageProviderBase,
+  { provider: T }
+>;
+
 export const configSchema = z.object({
   catalogIds: z.array(z.string()).default(DEFAULT_COLLECTION_IDS),
-  imageProxy: z.enum(["none", "weserv"]).default("none").catch("none"),
   dynamicCollections: z.boolean().default(false).catch(false),
-  fanart: z
-    .object({
-      enabled: z.boolean().default(false).catch(false),
-      apiKey: z.string().optional(),
-    })
-    .catch({ enabled: false }),
+  imageProviders: imageProviderSchema.array().default([{ provider: "douban", extra: { proxy: "none" } }]),
 });
 
 export type Config = z.infer<typeof configSchema>;
@@ -62,12 +85,8 @@ export const getConfig = async (env: CloudflareBindings, id?: string): Promise<C
       if (config) {
         const transformedConfig: ConfigInput = {
           catalogIds: config.catalogIds ?? undefined,
-          imageProxy: config.imageProxy,
           dynamicCollections: config.dynamicCollections,
-          fanart: {
-            enabled: config.fanartEnabled,
-            apiKey: config.fanartApiKey ?? undefined,
-          },
+          imageProviders: config.imageProviders as ConfigInput["imageProviders"],
         };
         return configSchema.parse(transformedConfig);
       }
@@ -97,9 +116,8 @@ export async function saveUserConfig(
   userId: string,
   config: {
     catalogIds: string[];
-    imageProxy: string;
     dynamicCollections: boolean;
-    fanart?: { enabled: boolean; apiKey?: string };
+    imageProviders: Config["imageProviders"];
   },
 ): Promise<void> {
   const db = getDrizzle(c.env);
@@ -109,19 +127,15 @@ export async function saveUserConfig(
     .values({
       userId,
       catalogIds: config.catalogIds,
-      imageProxy: config.imageProxy,
       dynamicCollections: config.dynamicCollections,
-      fanartEnabled: config.fanart?.enabled ?? false,
-      fanartApiKey: config.fanart?.apiKey,
+      imageProviders: config.imageProviders,
     })
     .onConflictDoUpdate({
       target: userConfigs.userId,
       set: {
         catalogIds: config.catalogIds,
-        imageProxy: config.imageProxy,
         dynamicCollections: config.dynamicCollections,
-        fanartEnabled: config.fanart?.enabled ?? false,
-        fanartApiKey: config.fanart?.apiKey,
+        imageProviders: config.imageProviders,
       },
     });
 }

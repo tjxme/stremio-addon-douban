@@ -3,10 +3,10 @@ import { eq } from "drizzle-orm";
 import { type Env, Hono } from "hono";
 import { doubanMapping } from "@/db";
 import { api } from "@/libs/api";
-import { FanartAPI } from "@/libs/api/fanart";
 import { getConfig } from "@/libs/config";
+import { ImageUrlGenerator } from "@/libs/images";
 import { matchResourceRoute } from "@/libs/router";
-import { generateImageUrl, isForwardUserAgent } from "@/libs/utils";
+import { isForwardUserAgent } from "@/libs/utils";
 
 export const metaRoute = new Hono<Env>();
 
@@ -30,14 +30,13 @@ metaRoute.get("*", async (c) => {
   if (!doubanId) {
     return c.notFound();
   }
-  const config = await getConfig(c.env, params.config);
 
   const data = await api.doubanAPI.getSubjectDetail(doubanId);
+
   const meta: MetaDetail & { [key: string]: any } = {
     id: metaId,
     type: data.type === "tv" ? "series" : "movie",
     name: data.title,
-    poster: generateImageUrl(data.cover_url || data.pic?.large || data.pic?.normal || "", config.imageProxy),
     description: data.intro ?? undefined,
     genres: data.genres ?? undefined,
     links: [
@@ -74,19 +73,19 @@ metaRoute.get("*", async (c) => {
     meta.behaviorHints.defaultVideoId = imdbId;
   }
 
-  const fanartApi = config.fanart.enabled ? new FanartAPI(config.fanart.apiKey) : null;
-  if (fanartApi && (tmdbId || imdbId)) {
-    let searchId = tmdbId?.toString();
-    if (!searchId && imdbId) {
-      searchId = imdbId;
-    }
-    const images = await fanartApi.getSubjectImages(data.type, searchId);
-    if (images) {
-      meta.poster = images.poster || meta.poster;
-      meta.background = images.background;
-      meta.logo = images.logo;
-    }
-  }
+  const config = await getConfig(c.env, params.config);
+  const imageUrlGenerator = new ImageUrlGenerator(config.imageProviders);
+  const images = await imageUrlGenerator.generate({
+    doubanInfo: {
+      cover: data.cover_url || data.pic?.large || data.pic?.normal || "",
+      type: data.type,
+    },
+    tmdbId,
+    imdbId,
+  });
+  meta.poster = images.poster;
+  meta.background = images.background;
+  meta.logo = images.logo;
 
   return c.json({
     meta,

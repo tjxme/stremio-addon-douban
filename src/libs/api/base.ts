@@ -29,13 +29,21 @@ export class BaseAPI {
       console.info("⬆️", config.method?.toUpperCase(), finalUri);
       return config;
     });
-    this.axios.interceptors.response.use((response) => {
-      console.info("⬇️", response.status, axios.getUri(response.config));
-      if (response.status >= 400) {
-        console.error("❌", response.status, response.data);
-      }
-      return response;
-    });
+    this.axios.interceptors.response.use(
+      (response) => {
+        console.info("⬇️", response.status, axios.getUri(response.config));
+        if (response.status >= 400) {
+          console.error("❌", response.status, response.data);
+        }
+        return response;
+      },
+      (error) => {
+        if (!error.config?.baseURL?.includes("webservice.fanart.tv")) {
+          console.error("❌", error.response?.status, axios.getUri(error.config));
+        }
+        return Promise.reject(error);
+      },
+    );
   }
 
   private requestMap = new Map<string, Promise<unknown>>();

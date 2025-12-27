@@ -21,8 +21,12 @@ export const configureRoute = new Hono<Env>().post("/", zValidator("json", confi
     await saveUserConfig(c, user.id, config);
     manifestUrl = `${origin}/${user.id}/manifest.json`;
   } else {
-    // 未登录或未 Star 用户：编码配置到 URL
-    const encodedConfig = encodeConfig({ ...config, fanart: { enabled: false } });
+    // 未登录或未 Star 用户：编码配置到 URL，只保留豆瓣提供商
+    const filteredConfig = {
+      ...config,
+      imageProviders: config.imageProviders.filter((p) => p.provider === "douban"),
+    };
+    const encodedConfig = encodeConfig(filteredConfig);
     manifestUrl = `${origin}/${encodedConfig}/manifest.json`;
   }
 

@@ -92,8 +92,7 @@ export class FanartAPI extends BaseAPI {
           logo: resp.hdtvlogo?.[0]?.url,
         };
       }
-    } catch (error) {
-      console.error("[fanart] getSubjectImages error", error);
+    } catch {
       return null;
     }
   }

@@ -1,0 +1,113 @@
+import type { DoubanSubjectCollectionItem } from "./api";
+import { FanartAPI } from "./api/fanart";
+import { TmdbAPI } from "./api/tmdb";
+import type { ImageProvider } from "./config";
+
+type DoubanInfo = Pick<DoubanSubjectCollectionItem, "cover" | "photos" | "type">;
+
+export interface ImageUrls {
+  poster?: string;
+  background?: string;
+  logo?: string;
+}
+
+interface GenerateOptions {
+  doubanInfo: DoubanInfo;
+  tmdbId?: number | null;
+  imdbId?: string | null;
+}
+
+export class ImageUrlGenerator {
+  private fanartAPI?: FanartAPI;
+  private tmdbAPI?: TmdbAPI;
+
+  constructor(private providers: ImageProvider[]) {}
+
+  async generate(options: GenerateOptions): Promise<ImageUrls> {
+    const result: ImageUrls = {};
+
+    for (const provider of this.providers) {
+      const urls = await this.getUrlsForProvider(provider, options);
+      this.mergeUrls(result, urls);
+    }
+
+    return result;
+  }
+
+  private async getUrlsForProvider(provider: ImageProvider, options: GenerateOptions): Promise<ImageUrls | null> {
+    const { doubanInfo, tmdbId, imdbId } = options;
+
+    switch (provider.provider) {
+      case "douban":
+        return this.getDoubanUrls(doubanInfo, provider.extra);
+
+      case "fanart": {
+        const id = tmdbId?.toString() ?? imdbId;
+        if (!id) return null;
+        return this.getFanartUrls(id, doubanInfo.type, provider.extra);
+      }
+
+      case "tmdb":
+        if (!tmdbId) return null;
+        return this.getTmdbUrls(tmdbId, doubanInfo.type, provider.extra);
+
+      default:
+        return null;
+    }
+  }
+
+  private mergeUrls(target: ImageUrls, source?: ImageUrls | null): void {
+    if (!source) return;
+    target.poster ||= source.poster;
+    target.background ||= source.background;
+    target.logo ||= source.logo;
+  }
+
+  // Douban
+  private getDoubanUrls(info: DoubanInfo, extra: ImageProvider<"douban">["extra"]): ImageUrls {
+    return {
+      poster: this.applyProxy(info.cover, extra.proxy),
+      background: this.applyProxy(info.photos?.[0], extra.proxy),
+    };
+  }
+
+  private applyProxy(
+    url: string | null | undefined,
+    proxy: ImageProvider<"douban">["extra"]["proxy"],
+  ): string | undefined {
+    if (!url) return undefined;
+    if (proxy === "weserv") {
+      const proxyUrl = new URL("https://images.weserv.nl");
+      proxyUrl.searchParams.set("url", url);
+      return proxyUrl.toString();
+    }
+    return url;
+  }
+
+  // Fanart
+  private async getFanartUrls(
+    id: string,
+    type: "movie" | "tv",
+    extra: ImageProvider<"fanart">["extra"],
+  ): Promise<ImageUrls | null> {
+    this.fanartAPI ??= new FanartAPI(extra.apiKey);
+    return this.fanartAPI.getSubjectImages(type, id);
+  }
+
+  // TMDB
+  private async getTmdbUrls(
+    tmdbId: number,
+    type: "movie" | "tv",
+    extra: ImageProvider<"tmdb">["extra"],
+  ): Promise<ImageUrls | null> {
+    this.tmdbAPI ??= new TmdbAPI(extra.apiKey);
+    const images = await this.tmdbAPI.getSubjectImages(type, tmdbId);
+    if (!images) return null;
+
+    return {
+      poster: images.posters?.[0]?.file_path || undefined,
+      background: images.backdrops?.[0]?.file_path || undefined,
+      logo: images.logos?.[0]?.file_path || undefined,
+    };
+  }
+}

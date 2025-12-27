@@ -1,8 +1,8 @@
 import { useForm } from "@tanstack/react-form";
 import { isEqual } from "es-toolkit";
 import { hc } from "hono/client";
-import { Check, Copy, Film, HardDriveDownload, Settings, Tv } from "lucide-react";
-import { type FC, Fragment, useCallback, useMemo, useState } from "react";
+import { Copy, Film, HardDriveDownload, Image, Settings, Tv } from "lucide-react";
+import { type FC, Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   Item,
@@ -27,18 +27,10 @@ import {
 import type { Config } from "@/libs/config";
 import type { ConfigureRoute } from "@/routes/configure";
 import { GenreDrawer } from "./genre-drawer";
+import { ImageProviderSortable } from "./image-provider-sortable";
 import { SettingSection } from "./setting-section";
 import { Button } from "./ui/button";
-
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "./ui/input-group";
-import { NativeSelect, NativeSelectOption } from "./ui/native-select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { Spinner } from "./ui/spinner";
 import { YearlyRankingDrawer } from "./yearly-ranking-drawer";
 
@@ -51,8 +43,8 @@ export interface ConfigureProps {
 const client = hc<ConfigureRoute>("/configure");
 
 export const Configure: FC<ConfigureProps> = ({ config: initialConfig, manifestUrl: initialManifestUrl, user }) => {
-  const [isCopied, setIsCopied] = useState(false);
   const [manifestUrl, setManifestUrl] = useState(initialManifestUrl);
+  const [savedConfig, setSavedConfig] = useState(initialConfig);
   const isStarredUser = !!user?.hasStarred;
 
   const form = useForm({
@@ -63,6 +55,7 @@ export const Configure: FC<ConfigureProps> = ({ config: initialConfig, manifestU
         const result = await res.json();
         if (result.success && result.manifestUrl) {
           setManifestUrl(result.manifestUrl);
+          setSavedConfig(value); // 更新已保存的配置
           toast.success(isStarredUser ? "配置已保存" : "配置链接已生成");
         } else {
           toast.error("保存失败");
@@ -73,14 +66,44 @@ export const Configure: FC<ConfigureProps> = ({ config: initialConfig, manifestU
     },
   });
 
+  // 监听页面离开事件，提示未保存的改动
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // 对比当前值与最后保存的配置
+      const hasChanges = !isEqual(form.state.values, savedConfig);
+      if (hasChanges) {
+        e.preventDefault();
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [form, savedConfig]);
+
   const copyToClipboard = useCallback(async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
+      toast.success("链接已复制到剪贴板");
     } catch {
-      // ignore
+      toast.error("复制失败");
     }
+  }, []);
+
+  const handleImport = useCallback(() => {
+    let didBlur = false;
+
+    const handleBlur = () => {
+      didBlur = true;
+    };
+
+    window.addEventListener("blur", handleBlur);
+
+    setTimeout(() => {
+      window.removeEventListener("blur", handleBlur);
+      if (!didBlur) {
+        toast.error("未检测到支持的应用，请确保已安装兼容 stremio 协议的应用");
+      }
+    }, 1000);
   }, []);
 
   // 创建类型榜单 ID 集合，用于过滤
@@ -112,105 +135,9 @@ export const Configure: FC<ConfigureProps> = ({ config: initialConfig, manifestU
         <div className="relative flex-1 overflow-hidden">
           <div className="h-full space-y-4 overflow-y-auto pb-4">
             <div className="page-container space-y-4 px-4">
+              {/* 通用模块 */}
               <SettingSection title="通用" icon={<Settings className="size-4 text-muted-foreground" />}>
                 <ItemGroup className="rounded-lg border">
-                  {/* 图片代理 */}
-                  <form.Field name="imageProxy">
-                    {(field) => (
-                      <Item size="sm">
-                        <ItemContent>
-                          <ItemTitle>选择图片代理服务</ItemTitle>
-                          <ItemDescription>针对 Stremio 用户优化，Forward 等客户端用户不建议开启</ItemDescription>
-                        </ItemContent>
-                        <ItemActions>
-                          <NativeSelect
-                            name={field.name}
-                            value={field.state.value}
-                            size="sm"
-                            onChange={(e) => field.handleChange(e.target.value as Config["imageProxy"])}
-                          >
-                            <NativeSelectOption value="none">不使用代理</NativeSelectOption>
-                            <NativeSelectOption value="weserv">Weserv</NativeSelectOption>
-                          </NativeSelect>
-                        </ItemActions>
-                      </Item>
-                    )}
-                  </form.Field>
-
-                  <ItemSeparator />
-
-                  {/* Fanart 开关 */}
-                  <form.Field name="fanart.enabled">
-                    {(field) => (
-                      <Item size="sm">
-                        <ItemContent>
-                          <ItemTitle className={!user?.hasStarred ? "text-muted-foreground" : undefined}>
-                            使用 Fanart 图片
-                          </ItemTitle>
-                          <ItemDescription>
-                            {user?.hasStarred
-                              ? "使用 fanart.tv 提供高清海报、背景和 Logo，若 Fanart 未匹配到图片，则降级使用豆瓣"
-                              : "使用 GitHub 登录并星标本项目可开启此功能"}
-                          </ItemDescription>
-                        </ItemContent>
-                        <ItemActions>
-                          <Switch
-                            checked={field.state.value}
-                            disabled={!user?.hasStarred}
-                            onCheckedChange={field.handleChange}
-                          />
-                        </ItemActions>
-                      </Item>
-                    )}
-                  </form.Field>
-
-                  {/* Fanart API Key */}
-                  <form.Subscribe selector={(state) => state.values.fanart.enabled}>
-                    {(fanartEnabled) =>
-                      !!(fanartEnabled && user?.hasStarred) && (
-                        <>
-                          <ItemSeparator />
-                          <form.Field name="fanart.apiKey">
-                            {(field) => (
-                              <Item size="sm">
-                                <ItemContent className="flex-1">
-                                  <ItemTitle>Fanart API 密钥（可选）</ItemTitle>
-                                  <ItemDescription>
-                                    未提供密钥仅显示 7 天前过审图片，提供后缩短至 48 小时，VIP 为 10 分钟。
-                                    <a
-                                      href="https://wiki.fanart.tv/General/personal%20api/"
-                                      target="_blank"
-                                      rel="noreferrer"
-                                    >
-                                      了解更多
-                                    </a>
-                                  </ItemDescription>
-                                  <InputGroup className="mt-2">
-                                    <InputGroupInput
-                                      type="password"
-                                      placeholder="请输入你的 API 密钥"
-                                      value={field.state.value ?? ""}
-                                      onChange={(e) => field.handleChange(e.target.value || undefined)}
-                                    />
-                                    <InputGroupAddon align="inline-end">
-                                      <InputGroupButton asChild>
-                                        <a href="https://fanart.tv/get-an-api-key/" target="_blank" rel="noreferrer">
-                                          获取 API 密钥
-                                        </a>
-                                      </InputGroupButton>
-                                    </InputGroupAddon>
-                                  </InputGroup>
-                                </ItemContent>
-                              </Item>
-                            )}
-                          </form.Field>
-                        </>
-                      )
-                    }
-                  </form.Subscribe>
-
-                  <ItemSeparator />
-
                   {/* 动态集合 */}
                   <form.Field name="dynamicCollections">
                     {(field) => (
@@ -223,6 +150,25 @@ export const Configure: FC<ConfigureProps> = ({ config: initialConfig, manifestU
                           <Switch name={field.name} checked={field.state.value} onCheckedChange={field.handleChange} />
                         </ItemActions>
                       </Item>
+                    )}
+                  </form.Field>
+                </ItemGroup>
+              </SettingSection>
+
+              {/* 图片提供商模块 */}
+              <SettingSection
+                title="图片来源"
+                icon={<Image className="size-4 text-muted-foreground" />}
+                footer="拖动排序调整优先级，排在前面的图片来源将优先使用"
+              >
+                <ItemGroup className="rounded-lg border">
+                  <form.Field name="imageProviders" mode="array">
+                    {(field) => (
+                      <ImageProviderSortable
+                        value={field.state.value}
+                        onChange={field.handleChange}
+                        disabled={!user?.hasStarred}
+                      />
                     )}
                   </form.Field>
                 </ItemGroup>
@@ -313,7 +259,7 @@ export const Configure: FC<ConfigureProps> = ({ config: initialConfig, manifestU
           <form.Subscribe selector={(state) => [state.values.catalogIds, state.isSubmitting, state.values] as const}>
             {([catalogIds, isSubmitting, values]) => {
               const isNoneSelected = catalogIds.length === 0;
-              const hasChanges = !isEqual(values, initialConfig);
+              const hasChanges = !isEqual(values, savedConfig);
 
               const saveButtonText = isStarredUser ? "保存配置" : "生成配置链接";
               const loadingText = isStarredUser ? "保存中..." : "生成中...";
@@ -343,10 +289,10 @@ export const Configure: FC<ConfigureProps> = ({ config: initialConfig, manifestU
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => copyToClipboard(manifestUrl)}>
-                        {isCopied ? <Check className="text-green-500" /> : <Copy />}
-                        {isCopied ? "已复制" : "复制链接"}
+                        <Copy />
+                        复制链接
                       </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
+                      <DropdownMenuItem asChild onClick={handleImport}>
                         <a href={`${manifestUrl.replace(/^https?:\/\//, "stremio://")}`}>
                           <HardDriveDownload />
                           导入配置
