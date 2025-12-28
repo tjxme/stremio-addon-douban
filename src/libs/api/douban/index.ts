@@ -15,7 +15,7 @@ import {
 } from "./schema";
 
 export class DoubanAPI extends BaseAPI {
-  static PAGE_SIZE = 10;
+  static PAGE_SIZE = 20;
 
   constructor() {
     super({
