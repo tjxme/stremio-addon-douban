@@ -42,9 +42,7 @@ export const users = sqliteTable("users", {
 
 // 用户配置表 - 存储用户的 Stremio 插件配置
 export const userConfigs = sqliteTable("user_configs", {
-  userId: text("user_id")
-    .primaryKey()
-    .references(() => users.id, { onDelete: "cascade" }),
+  userId: text("user_id").primaryKey(),
   catalogIds: text("catalog_ids", { mode: "json" }).$type<string[]>().default([]),
   dynamicCollections: int("dynamic_collections", { mode: "boolean" }).default(false),
   imageProviders: text("image_providers", { mode: "json" })

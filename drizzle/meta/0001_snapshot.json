@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "599d9895-2cb7-4506-adf9-fbc1dbf1f43b",
+  "id": "d135a193-5dc0-4118-a35f-850e6132d185",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "douban_mapping": {
@@ -114,21 +114,7 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {
-        "user_configs_user_id_users_id_fk": {
-          "name": "user_configs_user_id_users_id_fk",
-          "tableFrom": "user_configs",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
