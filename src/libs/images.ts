@@ -6,9 +6,9 @@ import type { ImageProvider } from "./config";
 type DoubanInfo = Pick<DoubanSubjectCollectionItem, "cover" | "photos" | "type">;
 
 export interface ImageUrls {
-  poster?: string;
-  background?: string;
-  logo?: string;
+  poster: string | undefined;
+  background: string | undefined;
+  logo: string | undefined;
 }
 
 interface GenerateOptions {
@@ -24,11 +24,16 @@ export class ImageUrlGenerator {
   constructor(private providers: ImageProvider[]) {}
 
   async generate(options: GenerateOptions): Promise<ImageUrls> {
-    const result: ImageUrls = {};
+    const result: ImageUrls = {
+      poster: undefined,
+      background: undefined,
+      logo: undefined,
+    };
 
     for (const provider of this.providers) {
       const urls = await this.getUrlsForProvider(provider, options);
       this.mergeUrls(result, urls);
+      if (Object.values(result).every(Boolean)) break;
     }
 
     return result;
@@ -68,6 +73,7 @@ export class ImageUrlGenerator {
     return {
       poster: this.applyProxy(info.cover, extra.proxy),
       background: this.applyProxy(info.photos?.[0], extra.proxy),
+      logo: undefined,
     };
   }
 
