@@ -2,7 +2,7 @@ import type { Manifest } from "@stremio-addon/sdk";
 import { type Env, Hono } from "hono";
 import pkg from "@/../package.json" with { type: "json" };
 import { getCatalogs } from "@/libs/catalog";
-import { type Config, encodeConfig, getConfig } from "@/libs/config";
+import { encodeConfig, getConfig } from "@/libs/config";
 import { idPrefixes } from "./meta";
 
 export const manifestRoute = new Hono<Env>();
@@ -30,6 +30,5 @@ manifestRoute.get("/", async (c) => {
     behaviorHints: {
       configurable: true,
     },
-    currentConfig: config,
-  } satisfies Manifest & { currentConfig: Config });
+  } satisfies Manifest);
 });
