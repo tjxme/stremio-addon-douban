@@ -107,13 +107,17 @@ export class ImageUrlGenerator {
     extra: ImageProvider<"tmdb">["extra"],
   ): Promise<ImageUrls | null> {
     this.tmdbAPI ??= new TmdbAPI(extra.apiKey);
-    const images = await this.tmdbAPI.getSubjectImages(type, tmdbId);
-    if (!images) return null;
-
-    return {
-      poster: images.posters?.[0]?.file_path || undefined,
-      background: images.backdrops?.[0]?.file_path || undefined,
-      logo: images.logos?.[0]?.file_path || undefined,
-    };
+    try {
+      const images = await this.tmdbAPI.getSubjectImages(type, tmdbId);
+      if (!images) return null;
+      return {
+        poster: images.posters?.[0]?.file_path || undefined,
+        background: images.backdrops?.[0]?.file_path || undefined,
+        logo: images.logos?.[0]?.file_path || undefined,
+      };
+    } catch (error) {
+      console.error(error);
+      return null;
+    }
   }
 }
