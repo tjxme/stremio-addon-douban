@@ -32,6 +32,9 @@ metaRoute.get("*", async (c) => {
   }
 
   const data = await api.doubanAPI.getSubjectDetail(doubanId);
+  if (!data) {
+    return c.notFound();
+  }
 
   const meta: MetaDetail & { [key: string]: any } = {
     id: metaId,
@@ -57,6 +60,9 @@ metaRoute.get("*", async (c) => {
   const isInForward = isForwardUserAgent(c);
 
   const dbData = await api.db.query.doubanMapping.findFirst({ where: eq(doubanMapping.doubanId, doubanId) });
+  if (!dbData) {
+    c.executionCtx.waitUntil(api.db.insert(doubanMapping).values({ doubanId }));
+  }
 
   const { tmdbId, imdbId } = dbData || {};
 

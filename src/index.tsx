@@ -4,6 +4,7 @@ import { logger } from "hono/logger";
 import { scheduled } from "./cron";
 import { contextStorage, rateLimit } from "./libs/middleware";
 import { authMiddleware } from "./libs/session";
+import { apiRoute } from "./routes/api";
 import { authRoute } from "./routes/auth";
 import { catalogRoute } from "./routes/catalog";
 import { configureRoute } from "./routes/configure";
@@ -35,6 +36,7 @@ app.route("/:config/catalog", catalogRoute);
 app.route("/meta", metaRoute);
 app.route("/:config/meta", metaRoute);
 
+app.route("/api", apiRoute);
 app.route("/dash", dashRoute);
 
 export default {
