@@ -17,44 +17,46 @@ const InputGroupPassword = forwardRef<HTMLInputElement, React.ComponentProps<typ
   );
 });
 
+const getDefaultProxyTemplate = () => {
+  const { isStarredUser } = use(ConfigureContext);
+  return isStarredUser ? `${window.location.origin}/image-proxy/{{userId}}?url={{url | url_encode}}` : "";
+};
+
 /** 豆瓣配置 */
 export const doubanConfig: ProviderConfigDef<"douban"> = {
   id: "douban",
   name: "豆瓣",
   defaultExtra: () => ({
-    proxyTemplate: `${window.location.origin}/image-proxy/{{userId}}?url={{url | url_encode}}`,
+    proxyTemplate: getDefaultProxyTemplate(),
   }),
   renderConfig: ({ extra, onChange }) => {
-    const { isStarredUser } = use(ConfigureContext);
+    const defaultTemplate = typeof window !== "undefined" ? getDefaultProxyTemplate() : "";
+    const hasChanged = extra.proxyTemplate !== defaultTemplate;
     return (
       <Item size="sm">
         <ItemContent className="flex-1">
           <ItemTitle>图片代理模板</ItemTitle>
           <InputGroup className="mt-2">
             <InputGroupInput
-              placeholder={`例如：https://stremio-addon-douban.baran.wang/image-proxy/{{userId}}?url={{url | url_encode}}`}
-              value={isStarredUser ? (extra.proxyTemplate ?? "") : ""}
-              disabled={!isStarredUser}
+              placeholder="例如：https://proxy.example.com?url={{url | url_encode}}"
+              value={extra.proxyTemplate}
               onChange={(e) => onChange({ ...extra, proxyTemplate: e.target.value || undefined })}
             />
+            {hasChanged && (
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton onClick={() => onChange({ ...extra, proxyTemplate: defaultTemplate })}>
+                  恢复默认
+                </InputGroupButton>
+              </InputGroupAddon>
+            )}
           </InputGroup>
-          <ItemDescription className="line-clamp-none">
+          <ItemDescription>
             使用{" "}
             <a href="https://liquidjs.com/zh-cn/" target="_blank" rel="noreferrer">
               Liquid
             </a>{" "}
-            模板语法配置代理 URL。
-            <br />
-            可用变量：
-            <ul>
-              <li>
-                <code>{"{{url}}"}</code>：图片 URL
-              </li>
-              <li>
-                <code>{"{{userId}}"}</code>：用户 ID
-              </li>
-            </ul>
-            支持过滤器如 <code>{"{{url | url_encode}}"}</code>。留空则不使用代理。
+            模板语法。可用变量：<code>{"{{url}}"}</code>、<code>{"{{userId}}"}</code>。 支持过滤器如{" "}
+            <code>{"{{url | url_encode}}"}</code>。留空则不使用代理。
           </ItemDescription>
         </ItemContent>
       </Item>
