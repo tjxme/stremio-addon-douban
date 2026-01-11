@@ -5,7 +5,10 @@ import { isUserId } from "../config";
 export const rateLimit = createMiddleware<Env>(async (c, next) => {
   let success = false;
 
-  const [, configId] = new URL(c.req.url).pathname.split("/");
+  const pathname = new URL(c.req.url).pathname;
+  const [, firstSegment, secondSegment] = pathname.split("/");
+  // 支持 /:userId/... 和 /image-proxy/:userId 两种路径格式
+  const configId = firstSegment === "image-proxy" ? secondSegment : firstSegment;
   if (isUserId(configId) && c.req.header("User-Agent")) {
     ({ success } = await c.env.USER_RATE_LIMIT.limit({ key: configId }));
   } else {
