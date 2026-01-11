@@ -49,7 +49,7 @@ configureRoute.get(
             name="viewport"
             content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
           />
-          <Link rel="icon" href="/icon.png" />
+          <link rel="icon" href="/icon.png" />
         </head>
         <body>{children}</body>
       </html>
