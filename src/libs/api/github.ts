@@ -1,8 +1,8 @@
 import { Octokit } from "@octokit/core";
 import { OAuthApp } from "@octokit/oauth-app";
 
-const GITHUB_REPO_OWNER = "baranwang";
-const GITHUB_REPO_NAME = "stremio-addon-douban";
+const DEFAULT_GITHUB_REPO_OWNER = "tjxme";
+const DEFAULT_GITHUB_REPO_NAME = "stremio-addon-douban";
 
 export interface GitHubUser {
   id: number;
@@ -12,15 +12,20 @@ export interface GitHubUser {
 
 export class GitHubAPI {
   private oauthApp: OAuthApp;
+  private repoOwner: string;
+  private repoName: string;
 
   constructor(
     private clientId: string,
     clientSecret: string,
+    options?: { repoOwner?: string; repoName?: string },
   ) {
     this.oauthApp = new OAuthApp({
       clientId,
       clientSecret,
     });
+    this.repoOwner = options?.repoOwner?.trim() || DEFAULT_GITHUB_REPO_OWNER;
+    this.repoName = options?.repoName?.trim() || DEFAULT_GITHUB_REPO_NAME;
   }
 
   /**
@@ -63,8 +68,8 @@ export class GitHubAPI {
     const octokit = new Octokit({ auth: accessToken });
     try {
       await octokit.request("GET /user/starred/{owner}/{repo}", {
-        owner: GITHUB_REPO_OWNER,
-        repo: GITHUB_REPO_NAME,
+        owner: this.repoOwner,
+        repo: this.repoName,
       });
       return true;
     } catch {

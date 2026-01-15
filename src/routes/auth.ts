@@ -24,7 +24,10 @@ export const authRoute = new Hono<Env>()
       path: "/",
     });
 
-    const github = new GitHubAPI(c.env.GITHUB_CLIENT_ID, c.env.GITHUB_CLIENT_SECRET);
+    const github = new GitHubAPI(c.env.GITHUB_CLIENT_ID, c.env.GITHUB_CLIENT_SECRET, {
+      repoOwner: c.env.GITHUB_REPO_OWNER,
+      repoName: c.env.GITHUB_REPO_NAME,
+    });
     const authUrl = github.getAuthUrl(state);
     return c.redirect(authUrl);
   })
@@ -47,7 +50,10 @@ export const authRoute = new Hono<Env>()
     }
 
     try {
-      const github = new GitHubAPI(c.env.GITHUB_CLIENT_ID, c.env.GITHUB_CLIENT_SECRET);
+      const github = new GitHubAPI(c.env.GITHUB_CLIENT_ID, c.env.GITHUB_CLIENT_SECRET, {
+        repoOwner: c.env.GITHUB_REPO_OWNER,
+        repoName: c.env.GITHUB_REPO_NAME,
+      });
 
       // 交换 access token
       const accessToken = await github.exchangeCodeForToken(code);
@@ -142,7 +148,10 @@ export const authRoute = new Hono<Env>()
     }
 
     try {
-      const github = new GitHubAPI(c.env.GITHUB_CLIENT_ID, c.env.GITHUB_CLIENT_SECRET);
+      const github = new GitHubAPI(c.env.GITHUB_CLIENT_ID, c.env.GITHUB_CLIENT_SECRET, {
+        repoOwner: c.env.GITHUB_REPO_OWNER,
+        repoName: c.env.GITHUB_REPO_NAME,
+      });
       const hasStarred = await github.checkStarStatus(user.githubAccessToken);
 
       // 如果状态有变化，更新数据库
