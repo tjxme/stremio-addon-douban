@@ -13,6 +13,17 @@ export const isForwardUserAgent = (c: Context) => {
 
 export const isNumeric = (str: string) => typeof str === "string" && str.trim() !== "" && Number.isFinite(+str);
 
+export const hasLatinLetters = (value?: string | null) => !!value && /[A-Za-z]/.test(value);
+
+export const getPreferredTitle = (title?: string | null, originalTitle?: string | null) => {
+  const cleanTitle = title?.trim() ?? "";
+  const cleanOriginal = originalTitle?.trim() ?? "";
+  if (cleanOriginal && hasLatinLetters(cleanOriginal) && !hasLatinLetters(cleanTitle)) {
+    return cleanOriginal;
+  }
+  return cleanTitle || cleanOriginal;
+};
+
 /** forward 对于 ID 识别有问题，暂时用 tmdb ID 作为 ID */
 export const generateId = (options: { doubanId: number; imdbId?: string | null; tmdbId?: number | null }) => {
   const { doubanId, imdbId, tmdbId } = options;
