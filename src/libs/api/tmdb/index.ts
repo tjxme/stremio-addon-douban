@@ -14,10 +14,14 @@ export class TmdbAPI extends BaseAPI {
     });
   }
 
-  async search(type: "movie" | "tv", params: { query: string; year?: string }) {
+  async search(type: "movie" | "tv", params: { query: string; year?: string }, options?: { language?: string }) {
+    const language = options?.language ?? "en-US";
     const resp = await this.request({
       url: `/search/${type}`,
-      params,
+      params: {
+        ...params,
+        language,
+      },
     });
     return tmdbSearchResultSchema.parse(resp);
   }

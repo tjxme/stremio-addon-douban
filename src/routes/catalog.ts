@@ -72,6 +72,7 @@ catalogRoute.get("*", async (c) => {
         doubanId,
         type: item.type,
         title: getPreferredTitle(item.title, item.original_title),
+        year: item.year ?? undefined,
       });
     }),
   );

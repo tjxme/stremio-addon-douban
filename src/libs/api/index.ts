@@ -10,6 +10,7 @@ interface FindIdParams {
   type: "movie" | "tv";
   doubanId: number;
   title?: string;
+  year?: string;
 }
 
 export * from "./douban/schema";
@@ -101,6 +102,27 @@ class API extends BaseAPI {
     if (!result.imdbId) {
       const traktIds = await this.findIdWithTraktSearchTitle(params).catch(() => null);
       assignTraktIds(traktIds);
+    }
+
+    // 3. 如果仍未匹配到 TMDB，尝试用 TMDB 直接搜索英文标题
+    if (!result.tmdbId) {
+      const titles = [params.title, this.cleanSearchTitle(params.title)].filter(Boolean) as string[];
+      for (const title of titles) {
+        const tmdbResults = await this.tmdbAPI
+          .search(params.type, { query: title, year: params.year }, { language: "en-US" })
+          .catch(() => null);
+        const tmdbCandidate = tmdbResults?.results?.[0];
+        if (tmdbCandidate?.id) {
+          result.tmdbId = tmdbCandidate.id;
+          break;
+        }
+      }
+      if (result.tmdbId) {
+        const externalIds = await this.tmdbAPI.getExternalId(params.type, result.tmdbId).catch(() => null);
+        if (externalIds?.imdb_id) {
+          result.imdbId = externalIds.imdb_id;
+        }
+      }
     }
 
     return result;
